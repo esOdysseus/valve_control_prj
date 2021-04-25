@@ -1,0 +1,5 @@
+QMAKE_PRL_BUILD_DIR = /home/eunseok/project/project_2020/workspace/vscode/common_communicator/build/communicator/
+QMAKE_PRO_INPUT = communicator.pro
+QMAKE_PRL_TARGET = libcommunicator.so.0.1.6
+QMAKE_PRL_CONFIG = c++11 debug shared create_pc create_prl no_install_prl dll shared
+QMAKE_PRL_VERSION = 0.1.6
