@@ -1,0 +1,52 @@
+# Project
+- Name : Valve-Controller
+
+### Simple-Description
+- This APP control GPIO-pin to open/close Valves.
+
+### Features
+1. CMD-receiver : Receive command to control valves.
+2. Valve-Ctrller: Control valves to open/close it.
+3. Guarantor    : Ensure that the valve that was opened is willing to close.
+
+## License
+```
+Copyright [2021-] 
+Written by EunSeok Kim <es.odysseus@gmail.com>
+```
+
+### Developer
+- esOdysseus (email: es.odysseus@gmail.com)
+
+### Latest Release
+- version 0.2.0 (Date: 2021-06-11)
+---
+## Installation
+> Please refer following commands.
+> So, you can see the Application(app_valve_control) in release folder.
+```shell
+$ cd ${work}
+$ bash ./valve_controller/build.sh -m release -t valve -arch x86
+```
+### Library Dependency
+- communicator : for common-communication on Ethernet.
+- pthread      : for create pthread.
+
+---
+### Example
+- You can test the APP. by using following guide-line.
+   ```shell
+   $ cd ${work}/valve_controller
+   $ bash ./build.sh -m release -t valve -arch x86
+   $ ./release/bin/app_valve_control ${Path-of-desp-Alias.json} ${Path-of-desp-Protocol.json}
+   ```
+   - Attention : You have to set followings.
+      1. LD_LIBRARY_PATH : "${work}/valve_controller/release/lib"
+      2. VALVE_GPIO_ROOT : "${work}/valve_controller/test/gpio"
+
+---
+## History
+Date | Version | Description
+:----|:----:|:----
+`2021-06-11` | Ver 0.2.0 | Commit refactoring Version with new common-communicator.
+

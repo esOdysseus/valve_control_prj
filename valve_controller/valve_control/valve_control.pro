@@ -3,7 +3,7 @@ TEMPLATE = app
 QT -= gui core
 
 VER_MAJ = 0
-VER_MIN = 1
+VER_MIN = 2
 VER_PAT = 0
 VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
 
@@ -34,13 +34,13 @@ INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
     $$EXTERNAL_LIB_ROOT/include    \
     $$ROOT_PATH/lib/exception   \
-    $$ROOT_PATH/lib/json    \
     $$ROOT_PATH/lib/logger  \
-    $$ROOT_PATH/lib/sys_sigslot
+    $$ROOT_PATH/lib/sys_sigslot \
+    $$ROOT_PATH/lib/json    \
+    $$ROOT_PATH/lib/time
 
 SOURCES += \
-    $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
-    $$files($$ROOT_PATH/lib/json/*.cpp)
+    $$files($$_PRO_FILE_PWD_/source/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

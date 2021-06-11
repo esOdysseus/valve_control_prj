@@ -3,36 +3,49 @@
  */
 {
     "aliases": {
-        "alias_udp_valve": {
-            "provider-type": "udp",     // available-type : udp, tcp, uds, vsomeip, iotivity
-            "address": {                // describe address of alias.
-                "ip": "192.168.1.2",    // ip of alias that is destination.
-                "mask": "24",           // Network mask.
-                "port": "23456"         // port of alias.
-            }
-        },
-        "alias_udp_01": {               // name of alias.
-            "provider-type": "udp",     // available-type : udp, tcp, uds, vsomeip, iotivity
-            "address": {                // describe address of alias.
-                "ip": "192.168.1.2",    // ip of alias that is destination.
-                "mask": "24",           // Network mask.
-                "port": "12346"         // port of alias.
-            }
-        },
-        "alias_tcp_01": {               // name of alias.
-            "provider-type": "tcp",     // available-type : udp, tcp, uds, vsomeip, iotivity
-            "address": {                // describe address of alias.
-                "ip": "192.168.1.2", // ip of alias that is destination.
-                "mask": "24",           // Network mask.
-                "port": "12346"         // port of alias.
-            }
-        },
-        "alias_vsomeip_01": {
-            "provider-type": "vsomeip", // available-type : udp, tcp, uds, vsomeip, iotivity
-            "address": {
-                "service-id": "0x1234",
-                "instance-id": "0x5678"
-            } // atention : event-id, event-grp is described by protocol for service-oriented COMM.
-        }
+        "Valve-Controller": {              // name of resource/app
+            "properties": {
+                "type": "single",      // valid-value : single , multi
+                "name": "self",        // default-value
+                "where": "OutDoor/Valve"   // single일때 만 유효하다. [Mandatory]
+            },
+            "svc-pvd": {
+                "cmd_receiver": {               // name of provider.
+                    "provider-type": "tcp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
+                    "address": {                // describe address of alias.
+                        "ip": "192.168.1.2", // ip of alias that is destination.
+                        "mask": "24",           // Network mask.
+                        "port": "12300"         // port of alias.
+                    }
+                }
+            }   // svc-pvd
+            
+        },   // Valve-Controller
+        "CMD-Scheduler": {              // name of resource/app
+            "properties": {
+                "type": "single",      // valid-value : single , multi
+                "name": "self",        // default-value
+                "where": "InDoor/House1/SmallRoom"   // single일때 만 유효하다. [Mandatory]
+            },
+            "svc-pvd": {
+                "dbg_receiver": {               // name of provider.
+                    "provider-type": "udp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
+                    "address": {                // describe address of alias.
+                        "ip": "192.168.1.3", // ip of alias that is destination.
+                        "mask": "24",           // Network mask.
+                        "port": "20000"         // port of alias.
+                    }
+                },
+                "cmd_sender": {               // name of provider.
+                    "provider-type": "tcp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
+                    "address": {                // describe address of alias.
+                        "ip": "192.168.1.3", // ip of alias that is destination.
+                        "mask": "24",           // Network mask.
+                        "port": "12000"         // port of alias.
+                    }
+                }
+            }   // svc-pvd
+            
+        }   // CMD-Scheduler
     }
 }

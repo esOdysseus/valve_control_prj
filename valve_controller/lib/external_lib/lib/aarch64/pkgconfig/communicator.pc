@@ -1,13 +1,13 @@
-prefix=/home/eunseok/project/project/workspace/vscode/common_communicator/debug/lib/../bin
+prefix=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../bin
 exec_prefix=${prefix}
-libdir=/home/eunseok/project/project/workspace/vscode/common_communicator/debug/lib
-includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/debug/lib/../include
-qt_config=c++11 debug shared create_pc create_prl no_install_prl dll shared
+libdir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib
+includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../include
+
 
 Name: communicator
 Description: Common-communicator SDK library that support transaction-orient & service-orient.
-Version: 0.1.6
+Version: 0.2.7
 Libs: -L${libdir} -lcommunicator 
-Libs.private:   -ldl -lpthread   
-Cflags:  -I${includedir}
+Libs.private: -ldl -lpthread   
+Cflags: -I${includedir}
 

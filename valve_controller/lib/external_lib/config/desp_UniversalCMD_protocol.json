@@ -1,0 +1,19 @@
+/*************************
+ * Protocol Description
+ */
+{
+    "protocol-libpath": "/home/eunseok/project/project/workspace/vscode/valve_control_prj/valve_controller/lib/external_lib/lib/x86/libproto.so",         // absolute-full-path
+    "protocol-id": "SAMPLE_PROTOCOLS",
+    "protocol-list": [
+        "CPUniversalCMD"
+    ],
+    "protocol-desp": {
+        "CPUniversalCMD": {
+            "index": "0",
+            "properties": {
+                "msg_id": "0x00",   // manual manipulate property.
+                "length": "none"    // auto manipulate property.
+            }
+        }
+    }
+}
