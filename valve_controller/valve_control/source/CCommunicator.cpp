@@ -100,7 +100,7 @@ void CCommunicator::cb_receive_msg_handle(std::string app_path, std::string pvd_
     // Parsing of received-CMD.
     if( valve_cmd->decode( protocol ) == true ) {
         // Insert CMD to list.
-        if (_ctrller_.insert_new_cmd(valve_cmd) == true) {
+        if (_ctrller_.apply_new_cmd(valve_cmd) == true) {
             if( (bool)(valve_cmd->get_flag(E_FLAG::E_FLAG_REQUIRE_ACK)) ) {
                 // If valve_cmd require ACK, then send ACK message.
                 LOGD("Try Sending ACK msg of ID(%d).", valve_cmd->get_id());

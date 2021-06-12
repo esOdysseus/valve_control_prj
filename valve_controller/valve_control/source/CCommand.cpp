@@ -14,6 +14,10 @@
 
 namespace valve_pkg {
 
+constexpr const char* CCommand::PROTOCOL_NAME;
+constexpr const char* CCommand::OPEN;
+constexpr const char* CCommand::CLOSE;
+
 #define BODY_KEY_WHAT           "what"
 #define BODY_KEY_WHAT_TYPE      "type"
 #define BODY_KEY_WHAT_SEQ       "seq"
@@ -176,6 +180,31 @@ CCommand::CCommand( alias::CAlias& myself, FlagType flag_val)
 
     if ( get_flag(E_FLAG::E_FLAG_ACK_MSG) || get_flag(E_FLAG::E_FLAG_KEEPALIVE) ) {
         assert( set_when() == true );
+    }
+}
+
+// Copy Constructor
+CCommand::CCommand( const CCommand& cmd, const std::string && method )
+: _myself_from_( cmd._myself_from_ ) {
+    clear();
+
+    // copy command
+    _is_parsed_ = cmd._is_parsed_;
+    _flag_ = cmd._flag_;
+    _state_ = cmd._state_;
+    _msg_id_ = cmd._msg_id_;
+    _when_tm_ = cmd._when_tm_;
+    _when_double_ = cmd._when_double_;
+    _what_ = cmd._what_;
+    _how_ = cmd._how_;
+    _why_ = cmd._why_;
+    _rcv_time_ = cmd._rcv_time_;
+
+    // change when & method.
+    if( method == CLOSE && _how_->get_method() == OPEN ) {
+        this->set_when( 0, 0, (int)(_how_->get_costtime()) );
+        _how_.reset();
+        _how_ = std::make_shared<CVhow>(method, "0.0");
     }
 }
 

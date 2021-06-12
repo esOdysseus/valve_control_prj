@@ -19,7 +19,8 @@ Written by EunSeok Kim <es.odysseus@gmail.com>
 - esOdysseus (email: es.odysseus@gmail.com)
 
 ### Latest Release
-- version 0.2.0 (Date: 2021-06-11)
+- version 0.2.1 (Date: 2021-06-12)
+
 ---
 ## Installation
 > Please refer following commands.
@@ -49,4 +50,4 @@ $ bash ./valve_controller/build.sh -m release -t valve -arch x86
 Date | Version | Description
 :----|:----:|:----
 `2021-06-11` | Ver 0.2.0 | Commit refactoring Version with new common-communicator.
-
+`2021-06-12` | Ver 0.2.1 | Add Function that process coupling OPEN/CLOSE command-pair.

@@ -88,35 +88,26 @@ void CController::destroy_threads(void) {
     }
 }
 
-bool CController::insert_new_cmd(std::shared_ptr<CMDType> cmd) {
-    CMDlistType::iterator itor;
-    E_CMPTIME state;
-    assert( cmd.get() != NULL );
-    assert( cmd->parsing_complet() == true );
-
+bool CController::apply_new_cmd(std::shared_ptr<CMDType> cmd) {
+    bool res = false;
     try {
-        std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
-        itor = _cmd_list_.begin();
+        auto cmds = decompose_cmd( cmd );
 
-        while( itor != _cmd_list_.end() ) {
-            // search position in _cmd_list_.
-            state = (*(itor))->check_with_another(cmd.get(), 0.0);
-            assert( state != E_CMPTIME::E_CMPTIME_UNKNOWN);
-            if ( state == E_CMPTIME::E_CMPTIME_OVER )
-                break;
+        for( auto itr=cmds.begin(); itr!=cmds.end(); itr++ ) {
+            res = insert_cmd( cmd );
+            if( res == false ) {
+                throw std::runtime_error("Inserting CMDs is failed.");
+            }
         }
-
-        // insert cmd to list.
-        _cmd_list_.insert(itor, cmd);
-        return true;
     }
-    catch (const std::exception &e) {
+    catch( const std::exception& e ) {
         LOGERR("%s", e.what());
-        throw e;
+        res = false;
     }
-    
-    return false;
+
+    return res;
 }
+
 
 /************************************
  * Definition of Private-Function.
@@ -376,6 +367,71 @@ bool CController::valve_set(std::string gpio_path, int value) {
 
     return result;
 }
+
+bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
+    CMDlistType::iterator itor;
+    E_CMPTIME state;
+    assert( cmd.get() != NULL );
+    assert( cmd->parsing_complet() == true );
+
+    try {
+        std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
+        itor = _cmd_list_.begin();
+
+        while( itor != _cmd_list_.end() ) {
+            // search position in _cmd_list_.
+            state = (*(itor))->check_with_another(cmd.get(), 0.0);
+            assert( state != E_CMPTIME::E_CMPTIME_UNKNOWN);
+            if ( state == E_CMPTIME::E_CMPTIME_OVER )
+                break;
+            
+            itor++;
+        }
+
+        // insert cmd to list.
+        _cmd_list_.insert(itor, cmd);
+        return true;
+    }
+    catch (const std::exception &e) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+    
+    return false;
+}
+
+CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd) {
+    CMDlistType cmds;
+    if( cmd.get() == NULL ) {
+        throw std::runtime_error("CMD is empty.");
+    }
+
+    try {
+        auto method = cmd->get_how_method();
+        double costtime = cmd->get_how_costtime();
+
+        // Check invalid command.
+        if ( method == CCommand::OPEN && costtime <= (double)WAITSEC_VALVE_OPEN ) {
+            std::string err = "Invalid-CMD is discarded. (method: Open, but costtime <= " + std::to_string(WAITSEC_VALVE_OPEN) + ")";
+            throw std::invalid_argument(err);
+        }
+
+        // Insert commands
+        cmds.push_back( cmd );
+        if( method == CCommand::OPEN ) {
+            // sub_cmd의 method, 실행시간 수정. (Close)
+            auto sub_cmd = std::make_shared<CMDType>( *cmd, CCommand::CLOSE );
+            cmds.push_back( sub_cmd );
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return cmds;
+}
+
 
 /********************************
  * Definition of Thread-Routin

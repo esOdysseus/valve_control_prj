@@ -111,6 +111,8 @@ public:
 
     CCommand( alias::CAlias& myself, FlagType flag_val);
 
+    CCommand( const CCommand& cmd, const std::string&& method );
+
     ~CCommand(void);
 
     void clear(void);

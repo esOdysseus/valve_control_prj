@@ -46,8 +46,7 @@ public:
 
     void destroy_threads(void);
 
-    /** Functions with regard to CMD */
-    bool insert_new_cmd(std::shared_ptr<CMDType> cmd);
+    bool apply_new_cmd(std::shared_ptr<CMDType> cmd);
 
 private:
     CController( void ) = delete;
@@ -70,6 +69,11 @@ private:
     std::string get_gpio_path(std::shared_ptr<CMDType> &valve_cmd);
 
     bool valve_set(std::string gpio_path, int value);
+
+    /** Functions with regard to CMD */
+    bool insert_cmd(std::shared_ptr<CMDType> cmd);
+
+    CMDlistType decompose_cmd(std::shared_ptr<CMDType> cmd);
 
 private:
     CCommunicator* _comm_;
