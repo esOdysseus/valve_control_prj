@@ -2,7 +2,8 @@
  * Protocol Description
  */
 {
-    "protocol-libpath": "/home/eunseok/project/project/workspace/vscode/valve_control_prj/common/lib/external_lib/lib/x86/libproto.so",         // absolute-full-path
+    // "protocol-libpath": "/home/eunseok/project/project/workspace/vscode/valve_control_prj/common/lib/external_lib/lib/x86/libproto.so",         // absolute-full-path
+    "protocol-libpath": "libproto.so",         // lib-name depends on LD_LIBRARY_PATH
     "protocol-id": "SAMPLE_PROTOCOLS",
     "protocol-list": [
         "CPUniversalCMD"

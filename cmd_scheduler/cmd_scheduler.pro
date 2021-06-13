@@ -40,6 +40,7 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/sys_sigslot    \
     $$COMMON_LIB_ROOT/lib/time    \
     $$_PRO_FILE_PWD_/source    \
+    $$_PRO_FILE_PWD_/source/include    \
     $$_PRO_FILE_PWD_/source/cmd_pkg    \
     $$_PRO_FILE_PWD_/source/monitor_pkg \
     $$_PRO_FILE_PWD_/source/monitor_pkg/base \

@@ -54,7 +54,7 @@ $ bash ./build.sh -m release -t valve -arch x86
    - Case-02
       ```shell
       $ cd ${work}
-      $ ./launcher.sh  -s-path ./valve_controller  -s-name run_x86.sh
+      $ ./launcher.sh  -s-path ./valve_controller  -s-name run_x86.sh -build release
       ```
 
 ---

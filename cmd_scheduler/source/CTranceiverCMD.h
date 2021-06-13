@@ -7,7 +7,7 @@
 #include <memory>
 #include <condition_variable>
 
-#include <IAppInf.h>
+#include <ICommunicator.h>
 #include <CVctrlCMD.h>
 #include <CDebugCMD.h>
 #include <CProcValve.h>
@@ -34,10 +34,10 @@ public:
 
     void cb_initialization(enum_c::ProviderType provider_type, bool flag_init);
 
-    void cb_connected(std::string client_id, bool flag_connect);
+    void cb_connected(std::string app_path, std::string pvd_id, bool flag_connect);
 
     // Control valves according to command of Center-Brain.
-    void cb_receive_msg_handle(std::string client_id, std::shared_ptr<payload::CPayload> payload);
+    void cb_receive_msg_handle(std::string app_path, std::string pvd_id, std::shared_ptr<payload::CPayload> payload);
 
     void cb_abnormally_quit(const std::exception &e);
 

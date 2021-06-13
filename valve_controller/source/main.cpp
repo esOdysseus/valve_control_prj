@@ -47,7 +47,10 @@ int main(int argc, char *argv[])
                                                         argv[1],
                                                         argv[2],
                                                         enum_c::ProviderMode::E_PVDM_BOTH);
-
+        if( handler.get() == NULL ) {
+            throw std::runtime_error("Can not create ICommunicator handler.");
+        }
+        
         std::cout << "Communicator-FW Version = " << handler->get_version() << std::endl;
 
         // Register Call-Back function pointer of CCommunicator class.

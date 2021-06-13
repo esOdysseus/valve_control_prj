@@ -89,12 +89,12 @@ void CTranceiverCMD::cb_abnormally_quit(const std::exception &e) {
 }
 
 // Client was connected.
-void CTranceiverCMD::cb_connected(std::string client_id, bool flag_connect) {
+void CTranceiverCMD::cb_connected(std::string app_path, std::string pvd_id, bool flag_connect) {
     LOGD("Called. arg(flag_connect=%d)", flag_connect);
 }
 
 // We receved a message from client_id.
-void CTranceiverCMD::cb_receive_msg_handle(std::string client_id, std::shared_ptr<payload::CPayload> payload) {
+void CTranceiverCMD::cb_receive_msg_handle(std::string app_path, std::string pvd_id, std::shared_ptr<payload::CPayload> payload) {
     LOGD("Called.");
 
     size_t data_size = 0;

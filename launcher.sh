@@ -14,6 +14,7 @@ SCRIPT_NAME=${NULL_VALUE}
 PROG_NAME=${NULL_VALUE}
 RUNNING_TIME=0
 PROG_PID=0
+BUILD_MODE=release
 
 
 ######################################
@@ -56,6 +57,7 @@ function get_input_parameter()
         case ${input} in
             "-s-name" )      IN_HEAD=${input};;
             "-s-path" )      IN_HEAD=${input};;
+            "-build" )      IN_HEAD=${input};;
             * )
                 case ${IN_HEAD} in 
                     "-s-name" )  # script-name: for SCRIPT_NAME
@@ -63,6 +65,9 @@ function get_input_parameter()
                         IN_HEAD=${NULL_VALUE};;
                     "-s-path" )  # script-path: for SCRIPT_PATH
                         SCRIPT_PATH=${input}
+                        IN_HEAD=${NULL_VALUE};;
+                    "-build" )  # build-mode: valid value [ release  debug ]
+                        BUILD_MODE=${input}
                         IN_HEAD=${NULL_VALUE};;
                     ${NULL_VALUE} )
                         ;;
@@ -89,7 +94,7 @@ function stop_program() {
 function run_program() {
     local TODAY=$(get_today)
     ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
-    PROG_PID=$(runner_start_program ${TODAY})
+    PROG_PID=$(runner_start_program ${TODAY} ${BUILD_MODE})
     cd ${ROOT_PATH}
 }
 

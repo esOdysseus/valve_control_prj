@@ -9,9 +9,14 @@ function runner_set_env() {
 }
 
 function runner_start_program() {
+    local BUILD_MODE=release
     local TODAY_DATE=${1}
+    if [ ! -z ${2} ]; then
+        BUILD_MODE=${2}
+    fi
+
     local LOG_FILE_NAME=log_${PROG_NAME}_${TODAY_DATE}.txt
-    local PROG_FULL_PATH=${__PROG_ROOT_PATH__}/../debug/valve_controller/bin
+    local PROG_FULL_PATH=${__PROG_ROOT_PATH__}/../${BUILD_MODE}/valve_controller/bin
     local ALIAS_FILE_PATH=${__COMMON_LIB_ROOT__}/lib/external_lib/config/desp_alias.json
     local PROTO_FILE_PATH=${__COMMON_LIB_ROOT__}/lib/external_lib/config/desp_UniversalCMD_protocol.json
 
