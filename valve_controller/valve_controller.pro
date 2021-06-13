@@ -12,7 +12,8 @@ VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
 }
 
 # for building
-EXTERNAL_LIB_ROOT=$$_PRO_FILE_PWD_/lib/external_lib
+COMMON_LIB_ROOT=$$_PRO_FILE_PWD_/../common
+EXTERNAL_LIB_ROOT=$$COMMON_LIB_ROOT/lib/external_lib
 LIBS += -lpthread -lcommunicator -L$$EXTERNAL_LIB_ROOT/lib/$$CPU_ARCH
 
 DEFINES += LOGGER_TAG=\\\"APP\\\"
@@ -33,11 +34,11 @@ equals(BUILD_MODE, "release") {
 INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
     $$EXTERNAL_LIB_ROOT/include    \
-    $$_PRO_FILE_PWD_/lib/exception   \
-    $$_PRO_FILE_PWD_/lib/logger  \
-    $$_PRO_FILE_PWD_/lib/sys_sigslot \
-    $$_PRO_FILE_PWD_/lib/json    \
-    $$_PRO_FILE_PWD_/lib/time
+    $$COMMON_LIB_ROOT/lib/exception   \
+    $$COMMON_LIB_ROOT/lib/logger  \
+    $$COMMON_LIB_ROOT/lib/sys_sigslot \
+    $$COMMON_LIB_ROOT/lib/json    \
+    $$COMMON_LIB_ROOT/lib/time
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)
