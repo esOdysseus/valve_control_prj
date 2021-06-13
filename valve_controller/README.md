@@ -37,12 +37,12 @@ $ bash ./valve_controller/build.sh -m release -t valve -arch x86
 ### Example
 - You can test the APP. by using following guide-line.
    ```shell
-   $ cd ${work}/valve_controller
+   $ cd ${work}
    $ bash ./build.sh -m release -t valve -arch x86
-   $ ./release/bin/app_valve_control ${Path-of-desp-Alias.json} ${Path-of-desp-Protocol.json}
+   $ ./release/valve_controller/bin/app_valve_control ${Path-of-desp-Alias.json} ${Path-of-desp-Protocol.json}
    ```
    - Attention : You have to set followings.
-      1. LD_LIBRARY_PATH : "${work}/valve_controller/release/lib"
+      1. LD_LIBRARY_PATH : "${work}/valve_controller/lib/external_lib/lib/x86"
       2. VALVE_GPIO_ROOT : "${work}/valve_controller/test/gpio"
 
 ---
