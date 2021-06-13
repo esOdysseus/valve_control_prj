@@ -47,8 +47,15 @@ function main() {
             rm -rf ${BUILD_DIR}
             rm -rf ${INSTALL_DIR}
             ;;
+        "all") # build all components
+            run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin
+            run_build_task  valve_controller  ${INSTALL_DIR}/valve_controller/bin
+            ;;
         "server")     # build cmd_scheduler
-            run_build_task  cmd_scheduler  ${INSTALL_DIR}/bin
+            run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin
+            ;;
+        "valve")     # build valve_control
+            run_build_task  valve_controller  ${INSTALL_DIR}/valve_controller/bin
             ;;
         "none")
             echo -e "\e[1;31m [ERROR] We need BUILD_TARGET. Please, insert -t option. \e[0m"
@@ -88,6 +95,7 @@ function run_build_task() {
 
     # Build Target
     echo ">>>> Build ${BUILD_TARGET} & install"
+    echo "qmake ${ROOT_PATH} TARGET=${BUILD_TARGET} BUILD_MODE=${BUILD_MODE} DESTDIR=${DESTDIR} CPU_ARCH=${CPU_ARCH}"
     qmake ${ROOT_PATH} TARGET=${BUILD_TARGET} BUILD_MODE=${BUILD_MODE} DESTDIR=${DESTDIR} CPU_ARCH=${CPU_ARCH}
     make
     make install

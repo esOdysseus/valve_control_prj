@@ -1,5 +1,5 @@
 #!/bin/bash
-PROG_NAME=valve_control
+PROG_NAME=app_valve_control
 __PROG_ROOT_PATH__=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 function runner_set_env() {
@@ -10,7 +10,7 @@ function runner_set_env() {
 function runner_start_program() {
     local TODAY_DATE=${1}
     local LOG_FILE_NAME=log_${PROG_NAME}_${TODAY_DATE}.txt
-    local PROG_FULL_PATH=${__PROG_ROOT_PATH__}/debug/bin
+    local PROG_FULL_PATH=${__PROG_ROOT_PATH__}/../debug/valve_controller/bin
     local ALIAS_FILE_PATH=${__PROG_ROOT_PATH__}/lib/external_lib/config/desp_alias.json
     local PROTO_FILE_PATH=${__PROG_ROOT_PATH__}/lib/external_lib/config/desp_UniversalCMD_protocol.json
 

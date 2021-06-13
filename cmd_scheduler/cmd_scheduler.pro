@@ -12,7 +12,7 @@ VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
 }
 
 # for building
-EXTERNAL_LIB_ROOT=$$_PRO_FILE_PWD_/../lib/external_lib
+EXTERNAL_LIB_ROOT=$$_PRO_FILE_PWD_/lib/external_lib
 LIBS += -lpthread -lcommunicator -L$$EXTERNAL_LIB_ROOT/lib/$$CPU_ARCH
 
 DEFINES += LOGGER_TAG=\\\"APP\\\"
@@ -32,12 +32,12 @@ equals(BUILD_MODE, "release") {
 
 INCLUDEPATH += \
     $$EXTERNAL_LIB_ROOT/include    \
-    $$ROOT_PATH/lib/logger  \
-    $$ROOT_PATH/lib/exception   \
-    $$ROOT_PATH/lib/json    \
-    $$ROOT_PATH/lib/lock    \
-    $$ROOT_PATH/lib/sys_sigslot    \
-    $$ROOT_PATH/lib/time    \
+    $$_PRO_FILE_PWD_/lib/logger  \
+    $$_PRO_FILE_PWD_/lib/exception   \
+    $$_PRO_FILE_PWD_/lib/json    \
+    $$_PRO_FILE_PWD_/lib/lock    \
+    $$_PRO_FILE_PWD_/lib/sys_sigslot    \
+    $$_PRO_FILE_PWD_/lib/time    \
     $$_PRO_FILE_PWD_/source    \
     $$_PRO_FILE_PWD_/source/cmd_pkg    \
     $$_PRO_FILE_PWD_/source/monitor_pkg \
@@ -48,9 +48,9 @@ INCLUDEPATH += \
 
 
 SOURCES += \
-    $$files($$ROOT_PATH/lib/json/*.cpp)     \
-    $$files($$ROOT_PATH/lib/lock/*.cpp)     \
-    $$files($$ROOT_PATH/lib/time/*.cpp)     \
+    $$files($$_PRO_FILE_PWD_/lib/json/*.cpp)     \
+    $$files($$_PRO_FILE_PWD_/lib/lock/*.cpp)     \
+    $$files($$_PRO_FILE_PWD_/lib/time/*.cpp)     \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
     $$files($$_PRO_FILE_PWD_/source/cmd_pkg/*.cpp) \
     $$files($$_PRO_FILE_PWD_/source/monitor_pkg/*.cpp)  \
