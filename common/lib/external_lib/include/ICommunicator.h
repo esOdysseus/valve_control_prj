@@ -220,7 +220,7 @@ public:
 
 private:
     ICommunicator(void) = delete;
-    ICommunicator( ICommunicator& inst ) = delete;
+    ICommunicator( const ICommunicator& inst ) = delete;
     ICommunicator( ICommunicator&& inst ) = delete;
     
 
