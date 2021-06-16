@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include <logger.h>
-#include <CCommand.h>
+#include <uCMDvalve/CCommand.h>
 #include <CException.h>
 #include <IProtocolInf.h>
 #include <Common.h>

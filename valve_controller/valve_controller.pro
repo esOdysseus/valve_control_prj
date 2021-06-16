@@ -34,14 +34,15 @@ equals(BUILD_MODE, "release") {
 INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
     $$EXTERNAL_LIB_ROOT/include    \
-    $$COMMON_LIB_ROOT/lib/exception   \
+    $$COMMON_LIB_ROOT \
+    $$COMMON_LIB_ROOT/lib/json    \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot \
-    $$COMMON_LIB_ROOT/lib/json    \
     $$COMMON_LIB_ROOT/lib/time
 
 SOURCES += \
-    $$files($$_PRO_FILE_PWD_/source/*.cpp)
+    $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
+    $$files($$COMMON_LIB_ROOT/uCMDvalve/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

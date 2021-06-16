@@ -33,10 +33,10 @@ equals(BUILD_MODE, "release") {
 
 INCLUDEPATH += \
     $$EXTERNAL_LIB_ROOT/include    \
-    $$COMMON_LIB_ROOT/lib/logger  \
-    $$COMMON_LIB_ROOT/lib/exception   \
+    $$COMMON_LIB_ROOT    \
     $$COMMON_LIB_ROOT/lib/json    \
     $$COMMON_LIB_ROOT/lib/lock    \
+    $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot    \
     $$COMMON_LIB_ROOT/lib/time    \
     $$_PRO_FILE_PWD_/source    \
@@ -51,6 +51,7 @@ INCLUDEPATH += \
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
+    $$files($$COMMON_LIB_ROOT/uCMDvalve/*.cpp)  \
     $$files($$_PRO_FILE_PWD_/source/cmd_pkg/*.cpp) \
     $$files($$_PRO_FILE_PWD_/source/monitor_pkg/*.cpp)  \
     $$files($$_PRO_FILE_PWD_/source/monitor_pkg/base/*.cpp)  \

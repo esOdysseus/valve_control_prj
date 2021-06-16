@@ -7,7 +7,7 @@
 #include <memory>
 
 #include <ICommunicator.h>
-#include <CCommand.h>
+#include <uCMDvalve/CCommand.h>
 #include <CController.h>
 #include <Common.h>
 
