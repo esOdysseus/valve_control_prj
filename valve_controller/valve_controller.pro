@@ -35,6 +35,7 @@ INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
     $$EXTERNAL_LIB_ROOT/include    \
     $$COMMON_LIB_ROOT \
+    $$COMMON_LIB_ROOT/principle   \
     $$COMMON_LIB_ROOT/lib/json    \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot \
@@ -42,7 +43,8 @@ INCLUDEPATH += \
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/uCMDvalve/*.cpp)
+    $$files($$COMMON_LIB_ROOT/uCMD/*.cpp)   \
+    $$files($$COMMON_LIB_ROOT/principle/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

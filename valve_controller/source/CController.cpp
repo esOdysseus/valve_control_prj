@@ -9,11 +9,14 @@
 #include <IProtocolInf.h>
 #include <CException.h>
 #include <CCommunicator.h>
+#include <time_kes.h>
 
 using namespace std;
 
 namespace valve_pkg {
 
+constexpr const char* CController::OPEN;
+constexpr const char* CController::CLOSE;
 
 /*********************************
  * Definition of Public Function.
@@ -74,7 +77,7 @@ void CController::destroy_threads(void) {
     _is_continue_ = false;
 
     // Destroy of POWER-off-threads for Each-valve.
-    for(int i=0; i < CMDType::E_TARGET::E_VALVE_CNT; i++) {
+    for(int i=0; i < E_VALVE::E_VALVE_CNT; i++) {
         std::thread &h_thread = _runner_valve_pwroff_[i];
         if( h_thread.joinable() == true ) {
             h_thread.join();
@@ -125,7 +128,7 @@ bool CController::init_gpio_root(void) {
 
 std::shared_ptr<CController::CMDlistType> CController::try_task_decision(void) {
     // Search Task-List to do task.
-    E_CMPTIME cmd_time_state = E_CMPTIME::E_CMPTIME_UNKNOWN;
+    cmd::E_CMPTIME cmd_time_state = cmd::E_CMPTIME::E_CMPTIME_UNKNOWN;
     std::shared_ptr<CMDType> valve_cmd;
     CMDlistType::iterator itor;
     CMDlistType::iterator itor_past;
@@ -139,8 +142,8 @@ std::shared_ptr<CController::CMDlistType> CController::try_task_decision(void) {
         valve_cmd = *itor;
 
         cmd_time_state = valve_cmd->check_with_curtime();
-        if ( cmd_time_state == E_CMPTIME::E_CMPTIME_EQUAL ||
-             cmd_time_state == E_CMPTIME::E_CMPTIME_UNDER ) {
+        if ( cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_EQUAL ||
+             cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_UNDER ) {
             cmds_to_exe->push_back(valve_cmd);
             itor_past = itor;
             itor++;
@@ -162,42 +165,47 @@ void CController::execute_cmds(std::shared_ptr<CMDlistType> &cmds) {
         valve_cmd.reset();
         valve_cmd = *itor;
 
-        // Wait pre-runned thread (valve power disable)
-        LOGD("Try to join of pre-runned thread.");
-        std::thread &h_thread = _runner_valve_pwroff_[valve_cmd->get_what_valve()];
-        if (h_thread.joinable()) {
-            h_thread.join();
-        }
-
-        // Act valve-command with power enable.
-        LOGD("Power Enable & Act Valve-cmd.");
-        if( execute_valve_cmd(valve_cmd, E_PWR::E_PWR_ENABLE) != true ) {
-            LOGERR("Executing valve-command is failed.");
-        }
-
-        // Stop action of valve-command by power disable.
-        LOGD("Try creating thread.");
-        h_thread = std::thread([this](std::shared_ptr<CMDType> cmd){
-            LOGD("Success Creating thread.");
-            uint32_t wait_sec = 1;
-            std::string t_how = cmd->get_how_method();
-            if ( t_how == CMDType::OPEN ) {
-                wait_sec = WAITSEC_VALVE_OPEN;
+        try {
+            // Wait pre-runned thread (valve power disable)
+            LOGD("Try to join of pre-runned thread.");
+            std::thread &h_thread = _runner_valve_pwroff_[valve_cmd->what().get_which()];
+            if (h_thread.joinable()) {
+                h_thread.join();
             }
-            else if ( t_how == CMDType::CLOSE ) {
-                wait_sec = WAITSEC_VALVE_CLOSE;
-            }
-            else {
-                LOGERR("Not Supported How(%s).", t_how.data());
-                wait_sec = 1;
-            }
-            
-            std::this_thread::sleep_for(std::chrono::seconds(wait_sec));
 
-            if( execute_valve_cmd(cmd, E_PWR::E_PWR_DISENABLE) != true ) {
+            // Act valve-command with power enable.
+            LOGD("Power Enable & Act Valve-cmd.");
+            if( execute_valve_cmd(valve_cmd, E_PWR::E_PWR_ENABLE) != true ) {
                 LOGERR("Executing valve-command is failed.");
             }
-        }, valve_cmd);
+
+            // Stop action of valve-command by power disable.
+            LOGD("Try creating thread.");
+            h_thread = std::thread([this](std::shared_ptr<CMDType> cmd) {
+                LOGD("Success Creating thread.");
+                uint32_t wait_sec = 1;
+                std::string t_how = cmd->how().get_method();
+                if ( t_how == OPEN ) {
+                    wait_sec = WAITSEC_VALVE_OPEN;
+                }
+                else if ( t_how == CLOSE ) {
+                    wait_sec = WAITSEC_VALVE_CLOSE;
+                }
+                else {
+                    LOGERR("Not Supported How(%s).", t_how.data());
+                    wait_sec = 1;
+                }
+                
+                std::this_thread::sleep_for(std::chrono::seconds(wait_sec));
+
+                if( execute_valve_cmd(cmd, E_PWR::E_PWR_DISENABLE) != true ) {
+                    LOGERR("Executing valve-command is failed.");
+                }
+            }, valve_cmd);
+        }
+        catch ( const std::exception& e ) {
+            LOGERR("%s", e.what());
+        }
 
         itor++;
     }
@@ -216,13 +224,13 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
     try{
         cout << "************ POWER = " << power << " **************" << endl;
         // cout << "who=" << valve_cmd->get_who() << endl;
-        cout << "when=" << valve_cmd->print_when() << endl;
-        cout << "current=" << valve_cmd->print_cur_time() << endl;
+        cout << "send_time=" << valve_cmd->print_send_time() << endl;
+        cout << "current=" << time_pkg::CTime::print_nanotime() << endl;
         cout << "CMP:time=" << valve_cmd->check_with_curtime() << endl;
-        cout << "what=" << valve_cmd->get_what_valve() << endl;
-        cout << "how=" << valve_cmd->get_how_method() << endl;
-        cout << "costtime=" << valve_cmd->get_how_costtime() << endl;
-        cout << "why=" << valve_cmd->get_why() << endl;
+        cout << "what=" << valve_cmd->what().get_type() << endl;
+        cout << "how=" << valve_cmd->how().get_method() << endl;
+        cout << "costtime=" << valve_cmd->how().get_costtime() << endl;
+        cout << "why=" << valve_cmd->why() << endl;
         cout << "************************************" << endl;
         
         // get gpio-path for control valve.
@@ -262,12 +270,12 @@ std::string CController::get_gpio_path(std::shared_ptr<CMDType> &valve_cmd) {
 
     try {
         // deal with 'how'
-        t_how = valve_cmd->get_how_method();
-        if ( t_how == CMDType::OPEN ) {
+        t_how = valve_cmd->how().get_method();
+        if ( t_how == OPEN ) {
             gpio_index = 0;
         }
-        else if ( t_how == CMDType::CLOSE ) {
-            gpio_index = CMDType::E_TARGET::E_VALVE_CNT;
+        else if ( t_how == CLOSE ) {
+            gpio_index = E_VALVE::E_VALVE_CNT;
         }
         else {
             LOGERR("Not supported Type of How-value.(%s)", t_how.c_str());
@@ -275,7 +283,7 @@ std::string CController::get_gpio_path(std::shared_ptr<CMDType> &valve_cmd) {
         }
 
         // deal with 'what'
-        gpio_index += valve_cmd->get_what_valve();
+        gpio_index += valve_cmd->what().get_which();
         switch(gpio_index){
         /** Valve 01 */
         case E_GPIO::E_VALVE_LEFT_01_OPEN:
@@ -306,7 +314,7 @@ std::string CController::get_gpio_path(std::shared_ptr<CMDType> &valve_cmd) {
             t_gpio += "gpio19/value";       // PA19 pin-out
             break;
         default:
-            LOGW("Not supported Target-GPIO.(%d)", valve_cmd->get_what_valve());
+            LOGW("Not supported Target-GPIO.(%d)", valve_cmd->what().get_which());
             throw CException(E_ERR_NOT_SUPPORTED_WHAT);
         }
     }
@@ -370,7 +378,7 @@ bool CController::valve_set(std::string gpio_path, int value) {
 
 bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
     CMDlistType::iterator itor;
-    E_CMPTIME state;
+    cmd::E_CMPTIME state;
     assert( cmd.get() != NULL );
     assert( cmd->parsing_complet() == true );
 
@@ -381,8 +389,8 @@ bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
         while( itor != _cmd_list_.end() ) {
             // search position in _cmd_list_.
             state = (*(itor))->check_with_another(cmd.get(), 0.0);
-            assert( state != E_CMPTIME::E_CMPTIME_UNKNOWN);
-            if ( state == E_CMPTIME::E_CMPTIME_OVER )
+            assert( state != cmd::E_CMPTIME::E_CMPTIME_UNKNOWN);
+            if ( state == cmd::E_CMPTIME::E_CMPTIME_OVER )
                 break;
             
             itor++;
@@ -407,20 +415,28 @@ CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd
     }
 
     try {
-        auto method = cmd->get_how_method();
-        double costtime = cmd->get_how_costtime();
+        auto method = cmd->how().get_method();
+        double costtime = cmd->how().get_costtime();
 
         // Check invalid command.
-        if ( method == CCommand::OPEN && costtime <= (double)WAITSEC_VALVE_OPEN ) {
+        if ( method == OPEN && costtime <= (double)WAITSEC_VALVE_OPEN ) {
             std::string err = "Invalid-CMD is discarded. (method: Open, but costtime <= " + std::to_string(WAITSEC_VALVE_OPEN) + ")";
             throw std::invalid_argument(err);
         }
 
         // Insert commands
         cmds.push_back( cmd );
-        if( method == CCommand::OPEN ) {
+        if( method == OPEN ) {
             // sub_cmd의 method, 실행시간 수정. (Close)
-            auto sub_cmd = std::make_shared<CMDType>( *cmd, CCommand::CLOSE );
+            auto cmd_when = cmd->when();
+            double close_time = cmd_when.get_start_time() + cmd->how().get_costtime();
+            auto sub_cmd = std::make_shared<CMDType>( *cmd );
+            if( sub_cmd.get() == NULL ) {
+                throw std::runtime_error("sub_cmd memory-allocation is failed.");
+            }
+            
+            sub_cmd->set_how( CLOSE );
+            sub_cmd->set_when( cmd_when.get_type(), close_time );
             cmds.push_back( sub_cmd );
         }
     }

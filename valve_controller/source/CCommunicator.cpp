@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <CCommunicator.h>
 #include <IProtocolInf.h>
+#include <IAliasPVD.h>
 #include <CException.h>
 
 using namespace std;
@@ -88,7 +89,7 @@ void CCommunicator::cb_receive_msg_handle(std::string app_path, std::string pvd_
                                           std::shared_ptr<payload::CPayload> payload) {
     LOGD("Called.");
 
-    std::string from_full_path = app_path + "/" + pvd_id;
+    std::string from_full_path = cf_alias::IAlias::make_full_path(app_path, pvd_id);
     std::shared_ptr<CMDType> valve_cmd = std::make_shared<CMDType>( app_path, pvd_id );
     std::shared_ptr<IProtocolInf> protocol = payload->get(CMDType::PROTOCOL_NAME);
 

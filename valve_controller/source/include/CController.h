@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 
-#include <uCMDvalve/CCommand.h>
+#include <uCMD/CCommand.h>
 #include <Common.h>
 
 namespace valve_pkg {
@@ -17,7 +17,7 @@ class CCommunicator;
 
 class CController {
 public:
-    using CMDType = CCommand;
+    using CMDType = cmd::CCommand;
     using CMDlistType = std::list<std::shared_ptr<CMDType>>;
     using E_PWR = enum E_PWR {
         E_PWR_DISENABLE = 0,
@@ -32,6 +32,19 @@ public:
         E_VALVE_LEFT_02_CLOSE = 5,
         E_VALVE_LEFT_03_CLOSE = 6,
         E_VALVE_LEFT_04_CLOSE = 7
+    };
+
+private:
+    static constexpr const char* OPEN = "open";
+    static constexpr const char* CLOSE = "close";
+    
+    using E_VALVE = enum E_VALVE {
+        E_VALVE_NULL = -1,
+        E_VALVE_LEFT_01 = 0,
+        E_VALVE_LEFT_02 = 1,
+        E_VALVE_LEFT_03 = 2,
+        E_VALVE_LEFT_04 = 3,
+        E_VALVE_CNT = 4
     };
 
 public:
@@ -82,7 +95,7 @@ private:
     
     std::thread _runner_exe_cmd_; // Periodically, Thread that is charge of deciding & executing for received CMD.
 
-    std::thread _runner_valve_pwroff_[CMDType::E_TARGET::E_VALVE_CNT];
+    std::thread _runner_valve_pwroff_[E_VALVE::E_VALVE_CNT];
 
     StateType _state_;
 
