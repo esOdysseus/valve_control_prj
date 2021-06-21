@@ -14,7 +14,10 @@ namespace principle {
  */
 class CWho {
 public:
-    CWho( std::string app_path, std::string pvd_id, std::string func_id="none" ) {
+    static constexpr const char* STR_NULL = "none";
+
+public:
+    CWho( std::string app_path, std::string pvd_id, std::string func_id=STR_NULL ) {
         _app_path_ = app_path;
         _pvd_id_ = pvd_id;
         _func_id_ = func_id;
@@ -47,10 +50,8 @@ private:
  */
 class CWhen {
 public:
-    static constexpr const char*    LATENCY_NULL_STR    = "-1.0";
     static constexpr const double   LATENCY_NULL        = -1.0;
     static constexpr const char*    WEEK_NULL_STR       = "none";
-    static constexpr const char*    PERIOD_NULL_STR     = "0";
     static constexpr const uint32_t PERIOD_NULL         = 0;
     static constexpr const char*    DATE_NULL_STR       = "none";
     static constexpr const char*    TIME_NULL_STR       = "none";
@@ -66,8 +67,8 @@ public:
     CWhen( std::string type, std::string start_date = DATE_NULL_STR, 
                              std::string run_time = TIME_NULL_STR,
                              std::string week = WEEK_NULL_STR, 
-                             std::string period = PERIOD_NULL_STR, 
-                             std::string latency = LATENCY_NULL_STR);
+                             uint32_t period = PERIOD_NULL, 
+                             double latency = LATENCY_NULL);
 
     // for encoding
     CWhen( std::string type, double start_time, 
@@ -138,10 +139,10 @@ public:
     static constexpr const double GPS_NULL = -1.0;
 
 public:
-    CWhere( std::string type, std::string gps_long="-1.0", std::string gps_lat="-1.0" ) {
+    CWhere( std::string type, double gps_long=GPS_NULL, double gps_lat=GPS_NULL ) {
         _type_ = type;
-        _gps_long_ = std::stod( gps_long, nullptr );
-        _gps_lat_ = std::stod( gps_lat, nullptr );
+        _gps_long_ = gps_long;
+        _gps_lat_ = gps_lat;
     }
 
     ~CWhere( void ) {
@@ -150,7 +151,7 @@ public:
         _gps_lat_ = GPS_NULL;
     }
 
-    std::string get_type(void) {    return _type_;  }
+    std::string get_type(void) { return _type_; }
 
     double get_gps_long(void) { return _gps_long_; }
 

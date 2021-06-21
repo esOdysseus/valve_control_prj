@@ -16,17 +16,34 @@ namespace cmd {
 
 constexpr const char* CCommand::PROTOCOL_NAME;
 
-#define BODY_KEY_WHAT               "what"
-#define BODY_KEY_WHAT_TYPE          "type"
-#define BODY_KEY_WHAT_SEQ           "seq"
-#define BODY_KEY_HOW                "how"
-#define BODY_KEY_HOW_METHOD         "method-pre"
-#define BODY_KEY_HOW_METHOD_POST    "method-post"
-#define BODY_KEY_HOW_COSTTIME       "costtime"
-#define BODY_KEY_WHY                "why"
-#define BODY_KEY_WHY_DESP           "desp"
-#define BODY_KEY_WHY_OBJ            "objective"
-#define BODY_KEY_WHY_DEP            "dependency"
+static std::string JKEY_VERSION            = "version";
+static std::string JKEY_WHO                = "who";
+static std::string JKEY_WHO_APP            = "app";
+static std::string JKEY_WHO_PVD            = "pvd";
+static std::string JKEY_WHO_FUNC           = "func";
+static std::string JKEY_WHEN               = "when";
+static std::string JKEY_WHEN_TYPE          = "type";
+static std::string JKEY_WHEN_TIME          = "time";
+static std::string JKEY_WHEN_LATENCY       = "latency";
+static std::string JKEY_WHEN_WEEK          = "week";
+static std::string JKEY_WHEN_PERIOD        = "period";
+static std::string JKEY_WHEN_DATE          = "date";
+static std::string JKEY_WHERE              = "where";
+static std::string JKEY_WHERE_TYPE         = "type";
+static std::string JKEY_WHERE_GPS          = "gps";
+static std::string JKEY_WHERE_GPS_LONG     = "long";
+static std::string JKEY_WHERE_GPS_LAT      = "lat";
+static std::string JKEY_WHAT               = "what";
+static std::string JKEY_WHAT_TYPE          = "type";
+static std::string JKEY_WHAT_SEQ           = "seq";
+static std::string JKEY_HOW                = "how";
+static std::string JKEY_HOW_METHOD         = "method-pre";
+static std::string JKEY_HOW_METHOD_POST    = "method-post";
+static std::string JKEY_HOW_COSTTIME       = "costtime";
+static std::string JKEY_WHY                = "why";
+static std::string JKEY_WHY_DESP           = "desp";
+static std::string JKEY_WHY_OBJ            = "objective";
+static std::string JKEY_WHY_DEP            = "dependency";
 
 
 /*******************************
@@ -105,7 +122,6 @@ CCommand::CCommand( const CCommand& cmd )
     _flag_ = cmd._flag_;
     _state_ = cmd._state_;
     _msg_id_ = cmd._msg_id_;
-    _send_time_tm_ = cmd._send_time_tm_;
     _send_time_d_ = cmd._send_time_d_;
     _rcv_time_ = cmd._rcv_time_;
     
@@ -125,7 +141,6 @@ void CCommand::clear(void) {
     _msg_id_ = 0;
     _flag_ = E_FLAG::E_FLAG_NONE;
     _state_ = 0;
-    bzero((void*)&_send_time_tm_, sizeof(_send_time_tm_));
     _send_time_d_ = 0.0;
     _rcv_time_ = 0.0;
 
@@ -168,7 +183,6 @@ bool CCommand::decode(std::shared_ptr<IProtocolInf>& protocol) {
 
             // parsing when time.
             _send_time_d_ = std::stod(protocol->get_property("when"));
-            _send_time_tm_ = time_pkg::CTime::convert<struct tm>( _send_time_d_ );
 
             // parsing json payload (where, what, how, why)
             json_manager = std::make_shared<json_mng::CMjson>();
@@ -246,7 +260,20 @@ std::shared_ptr<payload::CPayload> CCommand::encode( std::shared_ptr<ICommunicat
     return message;
 }
 
+// getter
+CCommand::FlagType CCommand::get_flag(FlagType pos) {
+    assert( pos != (FlagType)E_FLAG::E_FLAG_NONE);
+    return _flag_ & pos;
+}
+
 // setter
+void CCommand::set_id(unsigned long value) { 
+    _msg_id_ = value;
+    if( _msg_id_ == 0 ) {
+        _msg_id_ = gen_random_msg_id();
+    }
+}
+
 void CCommand::set_flag(E_FLAG pos, FlagType value) {
     int shift_cnt = 0;
 
@@ -282,23 +309,14 @@ void CCommand::set_how( std::string method, std::string post_method, double cost
 }
 
 
-CCommand::FlagType CCommand::get_flag(FlagType pos) {
-    assert( pos != (FlagType)E_FLAG::E_FLAG_NONE);
-    // assert( parsing_complet() == true );
-    return _flag_ & pos;
-}
-
-uint16_t CCommand::get_state(void) {
-    return _state_;
-}
-
 // printer
 std::string CCommand::print_send_time(void) {  // print when-data for human-readable.
     assert( parsing_complet() == true );
     char when_string[100];
 
     try {
-        strftime(when_string, 100, "CMD-When is [%B %d, %Y] time is [%T]", &_send_time_tm_);
+        auto time_tm = time_pkg::CTime::convert<struct tm>( _send_time_d_ );
+        strftime(when_string, 100, "CMD-When is [%B %d, %Y] time is [%T]", &time_tm);
         LOGD( "%s", when_string );
         return when_string;
     }
@@ -310,7 +328,7 @@ std::string CCommand::print_send_time(void) {  // print when-data for human-read
 }
 
 // compare time
-E_CMPTIME CCommand::check_with_curtime(double duty) {   // check whether current-time is over/under/equal with cmd-time.
+E_CMPTIME CCommand::compare_with_curtime(double duty) {   // check whether current-time is over/under/equal with cmd-time.
     try {
         if (  parsing_complet() == false ) {
             throw std::logic_error("Command-parsing is not processed.");
@@ -340,7 +358,7 @@ E_CMPTIME CCommand::check_with_curtime(double duty) {   // check whether current
     return E_CMPTIME::E_CMPTIME_UNKNOWN;
 }
 
-E_CMPTIME CCommand::check_with_another(CCommand *cmd, double duty) {
+E_CMPTIME CCommand::compare_with_another(CCommand *cmd, double duty) {
     assert( cmd != NULL );
     try {
         if (  parsing_complet() == false ) {
@@ -370,7 +388,7 @@ E_CMPTIME CCommand::check_with_another(CCommand *cmd, double duty) {
 
 CCommand::Twho& CCommand::who(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Twho Parsing is not complete.");
     }
     assert( _who_.get() != NULL );
     return *_who_; 
@@ -378,7 +396,7 @@ CCommand::Twho& CCommand::who(void) {
 
 CCommand::Twhen& CCommand::when(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Twhen Parsing is not complete.");
     }
     assert( _when_.get() != NULL );
     return *_when_; 
@@ -386,7 +404,7 @@ CCommand::Twhen& CCommand::when(void) {
 
 CCommand::Twhere& CCommand::where(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Twhere Parsing is not complete.");
     }
     assert( _where_.get() != NULL );
     return *_where_; 
@@ -394,7 +412,7 @@ CCommand::Twhere& CCommand::where(void) {
 
 CCommand::Twhat& CCommand::what(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Twhat Parsing is not complete.");
     }
     assert( _what_.get() != NULL );
     return *_what_; 
@@ -402,7 +420,7 @@ CCommand::Twhat& CCommand::what(void) {
 
 CCommand::Thow& CCommand::how(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Thow Parsing is not complete.");
     }
     assert( _how_.get() != NULL );
     return *_how_; 
@@ -410,7 +428,7 @@ CCommand::Thow& CCommand::how(void) {
 
 CCommand::Twhy& CCommand::why(void) { 
     if( parsing_complet() == false ) {
-        throw std::out_of_range("Parsing is not complete.");
+        throw std::out_of_range("Twhy Parsing is not complete.");
     }
     assert( _why_.get() != NULL );
     return *_why_; 
@@ -420,18 +438,116 @@ CCommand::Twhy& CCommand::why(void) {
 /***********************************
  * Definition of Private Function.
  */
+std::shared_ptr<CCommand::Twho> CCommand::extract_who(Json_DataType &json) {
+    std::string app = Twho::STR_NULL;
+    std::string pvd = Twho::STR_NULL;
+    std::string func = Twho::STR_NULL;
+    std::shared_ptr<Twho> result;
+    assert(json.get() != NULL);
+
+    try {
+        // check validation.
+        auto objects = json->get_member<Json_DataType>(JKEY_WHO);
+        assert( objects.get() != NULL );
+        app = objects->get_member(JKEY_WHO_APP);
+        pvd = objects->get_member(JKEY_WHO_PVD);
+
+        if( objects->has_member(JKEY_WHO_FUNC) == true )
+            func = objects->get_member(JKEY_WHO_FUNC);
+
+        result = std::make_shared<Twho>(app, pvd, func);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
+}
+
+std::shared_ptr<CCommand::Twhen> CCommand::extract_when(Json_DataType &json) {
+    std::string type;
+    double latency = Twhen::LATENCY_NULL;
+    std::string week = Twhen::WEEK_NULL_STR;
+    uint32_t period = Twhen::PERIOD_NULL;
+    std::string date = Twhen::DATE_NULL_STR;
+    std::string time = Twhen::TIME_NULL_STR;
+    std::shared_ptr<Twhen> result;
+    assert(json.get() != NULL);
+
+    try {
+        // check validation.
+        auto objects = json->get_member<Json_DataType>(JKEY_WHEN);
+        assert( objects.get() != NULL );
+        type = objects->get_member(JKEY_WHEN_TYPE);
+
+        // get valve value.
+        auto sub_obj = objects->get_member<Json_DataType>(JKEY_WHEN_TIME);
+        if( sub_obj->has_member(JKEY_WHEN_LATENCY) == true )
+            latency = sub_obj->get_member<double>(JKEY_WHEN_LATENCY);
+
+        if( sub_obj->has_member(JKEY_WHEN_WEEK) == true )
+            week = sub_obj->get_member(JKEY_WHEN_WEEK);
+
+        if( sub_obj->has_member(JKEY_WHEN_PERIOD) == true )
+            period = sub_obj->get_member<uint32_t>(JKEY_WHEN_PERIOD);
+
+        if( sub_obj->has_member(JKEY_WHEN_DATE) == true )
+            date = sub_obj->get_member(JKEY_WHEN_DATE);
+
+        if( sub_obj->has_member(JKEY_WHEN_TIME) == true )
+            time = sub_obj->get_member(JKEY_WHEN_TIME);
+        
+        result = std::make_shared<Twhen>(type, date, time, week, period, latency);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
+}
+
+std::shared_ptr<CCommand::Twhere> CCommand::extract_where(Json_DataType &json) {
+    std::string type;
+    double longitude = Twhere::GPS_NULL;
+    double latitude = Twhere::GPS_NULL;
+    std::shared_ptr<Twhere> result;
+    assert(json.get() != NULL);
+
+    try {
+        // check validation.
+        auto objects = json->get_member<Json_DataType>(JKEY_WHERE);
+        assert( objects.get() != NULL );
+        type = objects->get_member(JKEY_WHERE_TYPE);
+
+        // get valve value.
+        auto sub_obj = objects->get_member<Json_DataType>(JKEY_WHERE_GPS);
+        longitude = sub_obj->get_member<double>(JKEY_WHERE_GPS_LONG);
+        latitude = sub_obj->get_member<double>(JKEY_WHERE_GPS_LAT);
+
+        result = std::make_shared<Twhere>(type, longitude, latitude);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
+}
+
 std::shared_ptr<CCommand::Twhat> CCommand::extract_what(Json_DataType &json) {
     std::string type;
     int seq_num = -1;
     assert(json.get() != NULL);
 
     // check validation.
-    auto objects = json->get_member<Json_DataType>(BODY_KEY_WHAT);
+    auto objects = json->get_member<Json_DataType>(JKEY_WHAT);
     assert( objects.get() != NULL );
-    type = objects->get_member(BODY_KEY_WHAT_TYPE);
+    type = objects->get_member(JKEY_WHAT_TYPE);
 
     // get valve value.
-    seq_num = objects->get_member<int>(BODY_KEY_WHAT_SEQ);
+    seq_num = objects->get_member<int>(JKEY_WHAT_SEQ);
     return std::make_shared<Twhat>(type, seq_num);
 }
 
@@ -440,10 +556,10 @@ bool CCommand::apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value) {
     assert( value.get() != NULL );
 
     try {
-        json_sub = json->set_member(BODY_KEY_WHAT);
-        assert( json_sub->set_member(BODY_KEY_WHAT_TYPE, value->get_type()) == true );
-        assert( json_sub->set_member(BODY_KEY_WHAT_SEQ, value->get_which()) == true );
-        json->set_member(BODY_KEY_WHAT, json_sub.get());
+        json_sub = json->set_member(JKEY_WHAT);
+        assert( json_sub->set_member(JKEY_WHAT_TYPE, value->get_type()) == true );
+        assert( json_sub->set_member(JKEY_WHAT_SEQ, value->get_which()) == true );
+        json->set_member(JKEY_WHAT, json_sub.get());
         return true;
     }
     catch( const std::exception &e ) {
@@ -458,13 +574,13 @@ std::shared_ptr<CCommand::Thow> CCommand::extract_how(Json_DataType &json) {
     assert(json.get() != NULL);
 
     // get method
-    auto objects = json->get_member<Json_DataType>(BODY_KEY_HOW);
+    auto objects = json->get_member<Json_DataType>(JKEY_HOW);
     assert( objects.get() != NULL );
-    auto method = objects->get_member(BODY_KEY_HOW_METHOD);
-    auto method_post = objects->get_member(BODY_KEY_HOW_METHOD_POST);
+    auto method = objects->get_member(JKEY_HOW_METHOD);
+    auto method_post = objects->get_member(JKEY_HOW_METHOD_POST);
     
     // get costtime
-    auto cost_time = objects->get_member(BODY_KEY_HOW_COSTTIME);
+    auto cost_time = objects->get_member(JKEY_HOW_COSTTIME);
     return std::make_shared<Thow>(method, method_post, cost_time);
 }
 
@@ -473,11 +589,11 @@ bool CCommand::apply_how(Json_DataType &json, std::shared_ptr<Thow>& value) {
     assert( value.get() != NULL );
 
     try {
-        json_sub = json->set_member(BODY_KEY_HOW);
-        assert( json_sub->set_member(BODY_KEY_HOW_METHOD, value->get_method()) == true );
-        assert( json_sub->set_member(BODY_KEY_HOW_METHOD_POST, value->get_post_method()) == true );
-        assert( json_sub->set_member(BODY_KEY_HOW_COSTTIME, value->get_costtime()) == true );
-        json->set_member(BODY_KEY_HOW, json_sub.get());
+        json_sub = json->set_member(JKEY_HOW);
+        assert( json_sub->set_member(JKEY_HOW_METHOD, value->get_method()) == true );
+        assert( json_sub->set_member(JKEY_HOW_METHOD_POST, value->get_post_method()) == true );
+        assert( json_sub->set_member(JKEY_HOW_COSTTIME, value->get_costtime()) == true );
+        json->set_member(JKEY_HOW, json_sub.get());
         return true;
     }
     catch( const std::exception &e ) {
@@ -491,18 +607,18 @@ bool CCommand::apply_how(Json_DataType &json, std::shared_ptr<Thow>& value) {
 std::shared_ptr<CCommand::Twhy> CCommand::extract_why(Json_DataType &json) {
     assert(json.get() != NULL);
 
-    auto objects = json->get_member<Json_DataType>(BODY_KEY_WHY);
+    auto objects = json->get_member<Json_DataType>(JKEY_WHY);
     assert( objects.get() != NULL );
-    return std::make_shared<Twhy>(objects->get_member(BODY_KEY_WHY_DESP));
+    return std::make_shared<Twhy>(objects->get_member(JKEY_WHY_DESP));
 }
 
 bool CCommand::apply_why(Json_DataType &json, std::shared_ptr<Twhy>& value) {
     Json_DataType json_sub;
 
     try {
-        json_sub = json->set_member(BODY_KEY_WHY);
-        assert( json_sub->set_member(BODY_KEY_WHY_DESP, *value) == true );
-        json->set_member(BODY_KEY_WHY, json_sub.get());
+        json_sub = json->set_member(JKEY_WHY);
+        assert( json_sub->set_member(JKEY_WHY_DESP, *value) == true );
+        json->set_member(JKEY_WHY, json_sub.get());
         return true;
     }
     catch( const std::exception &e ) {

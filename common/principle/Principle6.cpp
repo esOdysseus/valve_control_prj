@@ -12,10 +12,8 @@ static constexpr const char*  TYPE_ROUTINE_DAY = "routine.day";
 static constexpr const char*  TYPE_SPECIAL_TIME = "specific";
 static constexpr const double START_TIME_NULL = 0.0;
 
-constexpr const char*    CWhen::LATENCY_NULL_STR;
 constexpr const double   CWhen::LATENCY_NULL;
 constexpr const char*    CWhen::WEEK_NULL_STR;
-constexpr const char*    CWhen::PERIOD_NULL_STR;
 constexpr const uint32_t CWhen::PERIOD_NULL;
 constexpr const char*    CWhen::DATE_NULL_STR;
 constexpr const char*    CWhen::TIME_NULL_STR;
@@ -38,29 +36,26 @@ const std::map<std::string, CWhen::TEweek> CWhen::MAP_WEEK = {
 CWhen::CWhen( std::string type, std::string start_date, 
                                 std::string run_time,
                                 std::string week, 
-                                std::string period, 
-                                std::string latency) {
+                                uint32_t period, 
+                                double latency) {
     try {
         double start_time = START_TIME_NULL;
-        double latency_d  = LATENCY_NULL;
         TEweek week_e = TEweek::E_WEEK_NONE;
-        uint32_t period_u = PERIOD_NULL;
 
         clear();
         regist_lamda_funcs();
 
-        latency_d = std::stod(latency, nullptr);
         auto itr = MAP_WEEK.find(week);
         if( itr != MAP_WEEK.end() ) {
             week_e = itr->second;
         }
-        period_u = static_cast<uint32_t>( std::stoul(period, nullptr, 10) );
+
         if( start_date != DATE_NULL_STR && run_time != TIME_NULL_STR ) {
             start_time = CTime::convert<double>( run_time, start_date.data(), 
                                                  CTime::DEF_TIME_FORMAT, CTime::DEF_DATE_FORMAT );
         }
 
-        apply( type, start_time, week_e, period_u, latency_d );
+        apply( type, start_time, week_e, period, latency );
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());

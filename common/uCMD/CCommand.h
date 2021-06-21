@@ -121,7 +121,7 @@ public:
 
     FlagType get_flag(FlagType pos=E_FLAG::E_FLAG_ALL);
 
-    uint16_t get_state(void);
+    uint16_t get_state(void) { return _state_; }
 
     alias::CAlias get_from(void) { return _myself_from_; }
 
@@ -130,12 +130,7 @@ public:
     double get_send_time(void) { return _send_time_d_; }
 
     // setter
-    void set_id(unsigned long value) { 
-        _msg_id_ = value;
-        if( _msg_id_ == 0 ) {
-            _msg_id_ = gen_random_msg_id();
-        }
-    }
+    void set_id(unsigned long value);
 
     void set_flag(E_FLAG pos, FlagType value=0);
 
@@ -152,6 +147,11 @@ public:
     // printer
     std::string print_send_time(void);  // print when-data for human-readable.
 
+    // compare time
+    E_CMPTIME compare_with_curtime(double duty=1.0);   // check whether cmd-time is over/under/equal corespond to current-time.
+
+    E_CMPTIME compare_with_another(CCommand *cmd, double duty=1.0);   // check whether cmd-time is over/under/equal corespond to another cmd-time.
+
     /***
      * Principle-6
      */
@@ -167,17 +167,12 @@ public:
 
     Twhy& why(void);
 
-    // compare time
-    E_CMPTIME check_with_curtime(double duty=1.0);   // check whether cmd-time is over/under/equal corespond to current-time.
-
-    E_CMPTIME check_with_another(CCommand *cmd, double duty=1.0);   // check whether cmd-time is over/under/equal corespond to another cmd-time.
-
 private:
-    // std::shared_ptr<Twho> extract_who(Json_DataType &json);
+    std::shared_ptr<Twho> extract_who(Json_DataType &json);
 
-    // std::shared_ptr<Twhen> extract_when(Json_DataType &json);
+    std::shared_ptr<Twhen> extract_when(Json_DataType &json);
 
-    // std::shared_ptr<Twhere> extract_where(Json_DataType &json);
+    std::shared_ptr<Twhere> extract_where(Json_DataType &json);
 
     std::shared_ptr<Twhat> extract_what(Json_DataType &json);
 
@@ -213,8 +208,6 @@ private:
     alias::CAlias _myself_from_;
 
     // send/receive time
-    struct tm _send_time_tm_;          // parsed time (min-unit is seconds)
-
     double _send_time_d_;       // UTC time with nano-seconds.
 
     double _rcv_time_;          // I receive this packet in time(_rcv_time_).

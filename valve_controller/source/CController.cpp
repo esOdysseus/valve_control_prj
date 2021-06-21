@@ -141,7 +141,7 @@ std::shared_ptr<CController::CMDlistType> CController::try_task_decision(void) {
         valve_cmd.reset();
         valve_cmd = *itor;
 
-        cmd_time_state = valve_cmd->check_with_curtime();
+        cmd_time_state = valve_cmd->compare_with_curtime();
         if ( cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_EQUAL ||
              cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_UNDER ) {
             cmds_to_exe->push_back(valve_cmd);
@@ -226,7 +226,7 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
         // cout << "who=" << valve_cmd->get_who() << endl;
         cout << "send_time=" << valve_cmd->print_send_time() << endl;
         cout << "current=" << time_pkg::CTime::print_nanotime() << endl;
-        cout << "CMP:time=" << valve_cmd->check_with_curtime() << endl;
+        cout << "CMP:time=" << valve_cmd->compare_with_curtime() << endl;
         cout << "what=" << valve_cmd->what().get_type() << endl;
         cout << "how=" << valve_cmd->how().get_method() << endl;
         cout << "costtime=" << valve_cmd->how().get_costtime() << endl;
@@ -388,7 +388,7 @@ bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
 
         while( itor != _cmd_list_.end() ) {
             // search position in _cmd_list_.
-            state = (*(itor))->check_with_another(cmd.get(), 0.0);
+            state = (*(itor))->compare_with_another(cmd.get(), 0.0);
             assert( state != cmd::E_CMPTIME::E_CMPTIME_UNKNOWN);
             if ( state == cmd::E_CMPTIME::E_CMPTIME_OVER )
                 break;

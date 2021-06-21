@@ -54,6 +54,10 @@ namespace json_mng
 
         MemberIterator end(void);
 
+        bool has_member(std::string &key);
+
+        bool is_array(std::string &key);
+
         static std::string get_first(MemberIterator itor);
 
         template <typename T=std::string>
@@ -115,10 +119,6 @@ namespace json_mng
         bool parse(std::shared_ptr<CRawMessage>& msg);
 
         bool parse(const char* msg_const);
-
-        bool has_member(std::string &key);
-
-        bool is_array(std::string &key);
 
         void is_array_check(std::string &key);
 
