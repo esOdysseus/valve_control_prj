@@ -88,6 +88,7 @@ typedef enum E_CMPTIME {
 class CCommand {
 public:
     using FlagType = uint8_t;
+    static constexpr const char* VERSION = "1.0.0";
     static constexpr const char* PROTOCOL_NAME = "CPUniversalCMD";
 
 public:
@@ -180,13 +181,13 @@ private:
 
     std::shared_ptr<Twhy> extract_why(Json_DataType &json);
 
-    // bool apply_who(Json_DataType &json, std::shared_ptr<Twho>& valve);
+    bool apply_who(Json_DataType &json, std::shared_ptr<Twho>& value);
 
-    // bool apply_when(Json_DataType &json, std::shared_ptr<Twhen>& valve);
+    bool apply_when(Json_DataType &json, std::shared_ptr<Twhen>& value);
 
-    // bool apply_where(Json_DataType &json, std::shared_ptr<Twhere>& valve);
+    bool apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value);
 
-    bool apply_what(Json_DataType &json, std::shared_ptr<Twhat>& valve);
+    bool apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value);
 
     bool apply_how(Json_DataType &json, std::shared_ptr<Thow>& value);
 
