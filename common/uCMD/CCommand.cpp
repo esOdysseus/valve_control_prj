@@ -613,17 +613,18 @@ std::shared_ptr<CCommand::Twhere> CCommand::extract_where(Json_DataType &json) {
 
 bool CCommand::apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value) {
     Json_DataType json_sub;
-    Json_DataType json_sub2;
     assert( value.get() != NULL );
 
     try {
         json_sub = json->set_member(JKEY_WHERE);
         assert( json_sub->set_member(JKEY_WHERE_TYPE, value->get_type()) == true );
 
-        json_sub2 = json_sub->set_member(JKEY_WHERE_GPS);
-        assert( json_sub2->set_member(JKEY_WHERE_GPS_LONG, value->get_gps_long()) == true );
-        assert( json_sub2->set_member(JKEY_WHERE_GPS_LAT, value->get_gps_lat()) == true );
-        json_sub->set_member(JKEY_WHERE_GPS, json_sub2.get());
+        if( value->get_gps_long() != Twhere::GPS_NULL && value->get_gps_lat() != Twhere::GPS_NULL ) {
+            Json_DataType json_sub2 = json_sub->set_member(JKEY_WHERE_GPS);
+            assert( json_sub2->set_member(JKEY_WHERE_GPS_LONG, value->get_gps_long()) == true );
+            assert( json_sub2->set_member(JKEY_WHERE_GPS_LAT, value->get_gps_lat()) == true );
+            json_sub->set_member(JKEY_WHERE_GPS, json_sub2.get());
+        }
         json->set_member(JKEY_WHERE, json_sub.get());
         return true;
     }
