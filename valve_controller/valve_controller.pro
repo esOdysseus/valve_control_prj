@@ -43,8 +43,8 @@ INCLUDEPATH += \
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/uCMD/*.cpp)   \
-    $$files($$COMMON_LIB_ROOT/principle/*.cpp)
+    $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
+    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

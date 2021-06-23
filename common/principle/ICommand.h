@@ -1,5 +1,5 @@
-#ifndef _UNIVERSAL_COMMAND_H_
-#define _UNIVERSAL_COMMAND_H_
+#ifndef _INTERFACE_COMMAND_H_
+#define _INTERFACE_COMMAND_H_
 
 #include <ctime>
 #include <string>
@@ -58,24 +58,11 @@
 }
 */
 
-typedef enum E_FLAG {
-    E_FLAG_NONE = 0,
-    E_FLAG_REQUIRE_RESP = 0x01,     // 0: not-require RESP      , 1: require RESP
-    E_FLAG_REQUIRE_ACK  = 0x02,     // 0: not-require ACK       , 1: require ACK
-    E_FLAG_REQUIRE_ACT  = 0x04,     // 0: not-require ACT-DONE  , 1: require ACT-DONE
-    E_FLAG_KEEPALIVE    = 0x08,     // 0: not keep-alive msg    , 1: keep-alive msg
-    E_FLAG_RESP_MSG     = 0x10,     // 0: REQ/PUB message       , 1: RESP message
-    E_FLAG_ACK_MSG      = 0x20,     // 0: not ack message       , 1: ACK message
-    E_FLAG_ACTION_DONE  = 0x40,     // 0: not act-done msg      , 1: ACT-DONE msg
-    E_FLAG_STATE_ERROR  = 0x80,     // 0: normal state          , 1: abnormal state
-    E_FLAG_ALL          = 0xFF
-} E_FLAG;
-
-
 /*******************************
  * Definition of Class.
  */
 namespace cmd {
+
 
 typedef enum E_CMPTIME {
     E_CMPTIME_UNKNOWN = -1,
@@ -85,12 +72,7 @@ typedef enum E_CMPTIME {
 } E_CMPTIME;
 
 
-class CCommand {
-public:
-    using FlagType = uint8_t;
-    static constexpr const char* VERSION = "1.0.0";
-    static constexpr const char* PROTOCOL_NAME = "CPUniversalCMD";
-
+class ICommand {
 public:
     using Twho = principle::CWho;
     using Twhen = principle::CWhen;
@@ -99,44 +81,33 @@ public:
     using Thow = principle::CHow;
     using Twhy = std::string;
 
+private:
+    static constexpr const char* VERSION = "1.0.0";
+
 public:
-    CCommand(std::string my_app_path, std::string my_pvd_id);
+    ICommand(std::string my_app_path, std::string my_pvd_id);
 
-    CCommand( alias::CAlias& myself, FlagType flag_val);
+    ICommand(const alias::CAlias& myself);
 
-    CCommand( const CCommand& cmd );
+    virtual ~ICommand(void);
 
-    ~CCommand(void);
+    virtual std::string name(void) = 0;
 
-    void clear(void);
+    virtual std::string proto_name(void) = 0;
+
+    std::string version(void) { return VERSION; };
 
     // presentator
-    bool decode(std::shared_ptr<IProtocolInf>& protocol);
+    virtual bool decode(std::shared_ptr<IProtocolInf>& protocol) = 0;
 
-    std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler );
-
-    bool parsing_complet(void) { return _is_parsed_; }
+    virtual std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler ) = 0;
 
     // getter
-    unsigned long get_id(void) { return _msg_id_; }
+    const alias::CAlias& get_from(void) const { return _myself_from_; }
 
-    FlagType get_flag(FlagType pos=E_FLAG::E_FLAG_ALL);
-
-    uint16_t get_state(void) { return _state_; }
-
-    alias::CAlias get_from(void) { return _myself_from_; }
-
-    double get_rcv_time(void) { return _rcv_time_; }
-
-    double get_send_time(void) { return _send_time_d_; }
+    double get_rcv_time(void) const { return _rcv_time_; }
 
     // setter
-    void set_id(unsigned long value);
-
-    void set_flag(E_FLAG pos, FlagType value=0);
-
-    void set_state(uint16_t value);
-
     void set_when( std::string type, double start_time, 
                                      Twhen::TEweek week = Twhen::TEweek::E_WEEK_NONE, 
                                      uint32_t period = Twhen::PERIOD_NULL, 
@@ -145,13 +116,10 @@ public:
     void set_how( std::string method, std::string post_method = Thow::METHOD_NULL, 
                                       double costtime = Thow::COSTTIME_NULL );
 
-    // printer
-    std::string print_send_time(void);  // print when-data for human-readable.
-
     // compare time
     E_CMPTIME compare_with_curtime(double duty=1.0);   // check whether cmd-time is over/under/equal corespond to current-time.
 
-    E_CMPTIME compare_with_another(CCommand *cmd, double duty=1.0);   // check whether cmd-time is over/under/equal corespond to another cmd-time.
+    E_CMPTIME compare_with_another(ICommand *cmd, double duty=1.0);   // check whether cmd-time is over/under/equal corespond to another cmd-time.
 
     /***
      * Principle-6
@@ -168,10 +136,16 @@ public:
 
     Twhy& why(void);
 
-private:
+protected:
+    bool is_parsed(void) const { return _is_parsed_; }
+
+    void set_flag_parse( bool value, double rcv_time=0.0 );
+
+    std::string extract_version(Json_DataType &json);
+
     std::shared_ptr<Twho> extract_who(Json_DataType &json);
 
-    std::shared_ptr<Twhen> extract_when(Json_DataType &json);
+    std::shared_ptr<Twhen> extract_when(Json_DataType &json, double def_time=0.0);
 
     std::shared_ptr<Twhere> extract_where(Json_DataType &json);
 
@@ -180,6 +154,8 @@ private:
     std::shared_ptr<Thow> extract_how(Json_DataType &json);
 
     std::shared_ptr<Twhy> extract_why(Json_DataType &json);
+
+    bool apply_version(Json_DataType &json);
 
     bool apply_who(Json_DataType &json, std::shared_ptr<Twho>& value);
 
@@ -193,26 +169,12 @@ private:
 
     bool apply_why(Json_DataType &json, std::shared_ptr<Twhy>& value);
 
-    uint32_t gen_random_msg_id(void);
-
 private:
-    // Data-Structure for Encoded packet.
-    bool _is_parsed_;     // If data is encoded, then set 'false'. vice versa set 'true'.
+    ICommand(void) = delete;
 
-    // Data-Structure for Decoded packet.
-    uint8_t _flag_;
-    
-    uint16_t _state_;
+    void clear(void);
 
-    uint32_t _msg_id_;
-
-    alias::CAlias _myself_from_;
-
-    // send/receive time
-    double _send_time_d_;       // UTC time with nano-seconds.
-
-    double _rcv_time_;          // I receive this packet in time(_rcv_time_).
-
+protected:
     // Principle-6: Who, When, Where, What, How, Why
     std::shared_ptr<Twho> _who_;
 
@@ -226,10 +188,20 @@ private:
 
     std::shared_ptr<Twhy> _why_;
 
+private:
+    // Data-Structure for Encoded packet.
+    bool _is_parsed_;     // If data is encoded, then set 'false'. vice versa set 'true'.
+
+    // packet received time
+    double _rcv_time_;          // I receive this packet in time.
+
+    // Data-Structure for Decoded packet.
+    alias::CAlias _myself_from_;
+
 };
 
 
 }   // namespace cmd
 
 
-#endif // _UNIVERSAL_COMMAND_H_
+#endif // _INTERFACE_COMMAND_H_

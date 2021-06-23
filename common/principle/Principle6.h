@@ -55,6 +55,7 @@ public:
     static constexpr const uint32_t PERIOD_NULL         = 0;
     static constexpr const char*    DATE_NULL_STR       = "none";
     static constexpr const char*    TIME_NULL_STR       = "none";
+    static constexpr const double   START_TIME_NULL     = 0.0;
 
     using TEweek = time_pkg::E_WEEK_TIME_VALVE;
 
@@ -68,7 +69,8 @@ public:
                              std::string run_time = TIME_NULL_STR,
                              std::string week = WEEK_NULL_STR, 
                              uint32_t period = PERIOD_NULL, 
-                             double latency = LATENCY_NULL);
+                             double latency = LATENCY_NULL,
+                             double def_time = START_TIME_NULL);
 
     // for encoding
     CWhen( std::string type, double start_time, 
@@ -207,12 +209,6 @@ public:
     static constexpr const char* METHOD_NULL = "none";
 
 public:
-    CHow( std::string method, std::string method_post, std::string cost_time ) {
-        _method_ = method;
-        _post_method_ = method_post;
-        _cost_time_ = std::stod( cost_time, nullptr );
-    }
-
     CHow( std::string method, std::string method_post=METHOD_NULL, double cost_time=COSTTIME_NULL ) {
         _method_ = method;
         _post_method_ = method_post;

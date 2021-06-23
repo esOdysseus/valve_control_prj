@@ -7,7 +7,7 @@
 #include <memory>
 #include <mutex>
 
-#include <uCMD/CCommand.h>
+#include <CMDs/CuCMD.h>
 #include <Common.h>
 
 namespace valve_pkg {
@@ -17,7 +17,7 @@ class CCommunicator;
 
 class CController {
 public:
-    using CMDType = cmd::CCommand;
+    using CMDType = cmd::CuCMD;
     using CMDlistType = std::list<std::shared_ptr<CMDType>>;
     using E_PWR = enum E_PWR {
         E_PWR_DISENABLE = 0,

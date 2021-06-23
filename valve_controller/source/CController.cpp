@@ -219,7 +219,7 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
 
     assert( _comm_ != NULL );
     assert( valve_cmd.get() != NULL );
-    assert( valve_cmd->parsing_complet() == true );
+    // assert( valve_cmd->parsing_complet() == true );
 
     try{
         cout << "************ POWER = " << power << " **************" << endl;
@@ -380,7 +380,7 @@ bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
     CMDlistType::iterator itor;
     cmd::E_CMPTIME state;
     assert( cmd.get() != NULL );
-    assert( cmd->parsing_complet() == true );
+    // assert( cmd->parsing_complet() == true );
 
     try {
         std::lock_guard<std::mutex> guard(_mtx_cmd_list_);

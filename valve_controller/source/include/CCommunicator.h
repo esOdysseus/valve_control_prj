@@ -7,7 +7,7 @@
 #include <memory>
 
 #include <ICommunicator.h>
-#include <uCMD/CCommand.h>
+#include <CMDs/CuCMD.h>
 #include <CController.h>
 #include <Common.h>
 
@@ -17,7 +17,7 @@ namespace valve_pkg {
 class CCommunicator {
 public:
     using CommHandler = std::shared_ptr<ICommunicator>;
-    using CMDType = cmd::CCommand;
+    using CMDType = cmd::CuCMD;
 
 public:
     CCommunicator(CommHandler handler, std::string& myapp_path, std::string& mypvd_id);
