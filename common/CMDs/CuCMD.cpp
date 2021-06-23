@@ -62,23 +62,15 @@ CuCMD::~CuCMD(void) {
 
 // presentator
 bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
-    size_t payload_size;
-    struct timespec temp;
-
     if( protocol.get() == NULL ) {
         LOGW("Protocol is empty.");
         return false;
     }
 
     try {
+        size_t payload_size = 0;
         std::string from_full_path;
-        Json_DataType json_manager;
         const char* payload = (const char*)protocol->get_payload(payload_size);
-
-        if( payload == NULL || payload_size <= 0 ) {
-            LOGERR("Payload(0x%X) is NULL or length(%u) <= 0.", payload, payload_size);
-            throw std::invalid_argument("Payload is NULL or length <= 0.");
-        }
 
         if( is_parsed() == false) {
             // unpacking
@@ -87,28 +79,31 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
             _msg_id_ = std::stoi(protocol->get_property("msg_id"), nullptr, 10);
             from_full_path = protocol->get_property("from");
             // Don't need to convert from_full_path to app_path & pvd_id.
-
             // parsing when time.
             _send_time_d_ = std::stod(protocol->get_property("when"));
 
-            // parsing json payload (where, what, how, why)
-            json_manager = std::make_shared<json_mng::CMjson>();
-            LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
-            assert( json_manager->parse(payload, payload_size) == true);
-            // check UniversalCMD version.
-            auto ver = extract_version(json_manager);
-            if( ver != version() ) {
-                std::string err = "VERSION(" + ver + ") of json-context != " + version();
-                throw std::invalid_argument(err);
+            if( payload != NULL && payload_size > 0 ) {
+                // parsing json payload (where, what, how, why)
+                Json_DataType json_manager;
+                json_manager = std::make_shared<json_mng::CMjson>();
+                LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
+                assert( json_manager->parse(payload, payload_size) == true);
+
+                // check UniversalCMD version.
+                auto ver = extract_version(json_manager);
+                if( ver != version() ) {
+                    std::string err = "VERSION(" + ver + ") of json-context != " + version();
+                    throw std::invalid_argument(err);
+                }
+                // parse principle-6.
+                _who_ = extract_who(json_manager);
+                _when_ = extract_when(json_manager, _send_time_d_);
+                _where_ = extract_where(json_manager);
+                _what_ = extract_what(json_manager);
+                _how_ = extract_how(json_manager);
+                _why_ = extract_why(json_manager);
+                LOGD( "Success parse of Json buffer." );
             }
-            // parse principle-6.
-            _who_ = extract_who(json_manager);
-            _when_ = extract_when(json_manager, _send_time_d_);
-            _where_ = extract_where(json_manager);
-            _what_ = extract_what(json_manager);
-            _how_ = extract_how(json_manager);
-            _why_ = extract_why(json_manager);
-            LOGD( "Success parse of Json buffer." );
 
             // mark receive-time of this packet using my-system time.
             set_flag_parse( true );
@@ -123,7 +118,6 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
 }
 
 std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>& handler ) {
-    const char* body = NULL;
     std::shared_ptr<payload::CPayload> message;
     std::shared_ptr<IProtocolInf> protocol;
 
@@ -133,8 +127,6 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
     }
 
     try {
-        Json_DataType json_manager;
-
         message = handler->create_payload();
         if( message.get() == NULL ) {
             throw std::logic_error("Message-Creating is failed.");
@@ -148,6 +140,8 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         if ( get_flag(E_FLAG_ACK_MSG) == false && 
              get_flag(E_FLAG_ACTION_DONE) == false && 
              get_flag(E_FLAG_KEEPALIVE) == false ) {
+            const char* body = NULL;
+            Json_DataType json_manager;
 
             // make json body (where, what, how, why)
             json_manager = std::make_shared<json_mng::CMjson>();

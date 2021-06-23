@@ -82,7 +82,9 @@ public:
     using Twhy = std::string;
 
 private:
+    static constexpr const char* NAME = "defCMD";
     static constexpr const char* VERSION = "1.0.0";
+    static constexpr const char* PROTOCOL_NAME = "none";
 
 public:
     ICommand(std::string my_app_path, std::string my_pvd_id);
@@ -91,16 +93,16 @@ public:
 
     virtual ~ICommand(void);
 
-    virtual std::string name(void) = 0;
+    virtual std::string name(void) const { return NAME; };
 
-    virtual std::string proto_name(void) = 0;
+    virtual std::string proto_name(void) const { return PROTOCOL_NAME; };
 
-    std::string version(void) { return VERSION; };
+    std::string version(void) const { return VERSION; };
 
     // presentator
-    virtual bool decode(std::shared_ptr<IProtocolInf>& protocol) = 0;
+    virtual bool decode(std::shared_ptr<IProtocolInf>& protocol);
 
-    virtual std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler ) = 0;
+    virtual std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler );
 
     // getter
     const alias::CAlias& get_from(void) const { return _myself_from_; }

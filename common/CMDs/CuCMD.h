@@ -47,9 +47,9 @@ public:
 
     ~CuCMD(void);
 
-    std::string name(void) override { return NAME; }
+    std::string name(void) const override { return NAME; }
 
-    std::string proto_name(void) override { return PROTOCOL_NAME; }
+    std::string proto_name(void) const override { return PROTOCOL_NAME; }
 
     // presentator
     bool decode(std::shared_ptr<IProtocolInf>& protocol) override;

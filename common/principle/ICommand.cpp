@@ -7,6 +7,7 @@
 #include <logger.h>
 #include <ICommand.h>
 #include <Common.h>
+#include <CException.h>
 #include <time_kes.h>
 
 
@@ -110,6 +111,94 @@ ICommand::~ICommand(void) {
     clear();
 }
 
+bool ICommand::decode(std::shared_ptr<IProtocolInf>& protocol) {
+    size_t payload_size = 0;
+    if( protocol.get() == NULL ) {
+        LOGW("Protocol is empty.");
+        return false;
+    }
+
+    try {
+        Json_DataType json_manager;
+        const char* payload = (const char*)protocol->get_payload(payload_size);
+        if( payload == NULL ) {
+            LOGERR("Payload(0x%X) is NULL or length(%u) < 0.", payload, payload_size);
+            throw std::invalid_argument("Payload is NULL or length <= 0.");
+        }
+
+        if( is_parsed() == false) {
+            // parsing json payload (where, what, how, why)
+            json_manager = std::make_shared<json_mng::CMjson>();
+            LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
+            assert( json_manager->parse(payload, payload_size) == true);
+
+            // check UniversalCMD version.
+            auto ver = extract_version(json_manager);
+            if( ver != version() ) {
+                std::string err = "VERSION(" + ver + ") of json-context != " + version();
+                throw std::invalid_argument(err);
+            }
+            // parse principle-6.
+            _who_ = extract_who(json_manager);
+            _when_ = extract_when(json_manager);
+            _where_ = extract_where(json_manager);
+            _what_ = extract_what(json_manager);
+            _how_ = extract_how(json_manager);
+            _why_ = extract_why(json_manager);
+            LOGD( "Success parse of Json buffer." );
+
+            // mark receive-time of this packet using my-system time.
+            set_flag_parse( true );
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw CException(E_ERROR::E_ERR_FAIL_DECODING_CMD);
+    }
+
+    return is_parsed();
+}
+
+std::shared_ptr<payload::CPayload> ICommand::encode( std::shared_ptr<ICommunicator>& handler ) {
+    const char* body = NULL;
+    std::shared_ptr<payload::CPayload> message;
+
+    if( handler.get() == NULL ) {
+        LOGW("Communicator is not exist.");
+        return message;
+    }
+
+    try {
+        Json_DataType json_manager;
+        json_manager = std::make_shared<json_mng::CMjson>();
+        message = handler->create_payload();
+        if( message.get() == NULL ) {
+            throw std::logic_error("Message-Creating is failed.");
+        }
+
+        // set UniversalCMD version.
+        assert(apply_version(json_manager) == true);
+        // set principle-6.
+        assert(apply_who(json_manager, _who_) == true);
+        assert(apply_when(json_manager, _when_) == true);
+        assert(apply_where(json_manager, _where_) == true);
+        assert(apply_what(json_manager, _what_) == true);
+        assert(apply_how(json_manager, _how_) == true);
+        assert(apply_why(json_manager, _why_) == true);
+        assert( (body = json_manager->print_buf()) != NULL );
+
+        message->set_payload( body, strlen(body) );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        message.reset();
+        throw CException(E_ERROR::E_ERR_FAIL_ENCODING_CMD);
+    }
+
+    return message;
+}
+
+
 void ICommand::set_when( std::string type, double start_time, 
                                            Twhen::TEweek week, 
                                            uint32_t period, 
@@ -184,49 +273,61 @@ E_CMPTIME ICommand::compare_with_another(ICommand *cmd, double duty) {
 
 ICommand::Twho& ICommand::who(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Twho Parsing is not complete.");
+        throw std::logic_error("Twho Parsing is not complete.");
     }
-    assert( _who_.get() != NULL );
+    if( _who_.get() == NULL ) {
+        throw std::out_of_range("Twho is NULL.");
+    }
     return *_who_; 
 }
 
 ICommand::Twhen& ICommand::when(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Twhen Parsing is not complete.");
+        throw std::logic_error("Twhen Parsing is not complete.");
     }
-    assert( _when_.get() != NULL );
+    if( _when_.get() == NULL ) {
+        throw std::out_of_range("Twhen is NULL.");
+    }
     return *_when_; 
 }
 
 ICommand::Twhere& ICommand::where(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Twhere Parsing is not complete.");
+        throw std::logic_error("Twhere Parsing is not complete.");
     }
-    assert( _where_.get() != NULL );
+    if( _where_.get() == NULL ) {
+        throw std::out_of_range("Twhere is NULL.");
+    }
     return *_where_; 
 }
 
 ICommand::Twhat& ICommand::what(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Twhat Parsing is not complete.");
+        throw std::logic_error("Twhat Parsing is not complete.");
     }
-    assert( _what_.get() != NULL );
+    if( _what_.get() == NULL ) {
+        throw std::out_of_range("Twhat is NULL.");
+    }
     return *_what_; 
 }
 
 ICommand::Thow& ICommand::how(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Thow Parsing is not complete.");
+        throw std::logic_error("Thow Parsing is not complete.");
     }
-    assert( _how_.get() != NULL );
+    if( _how_.get() == NULL ) {
+        throw std::out_of_range("Thow is NULL.");
+    }
     return *_how_; 
 }
 
 ICommand::Twhy& ICommand::why(void) { 
     if( is_parsed() == false ) {
-        throw std::out_of_range("Twhy Parsing is not complete.");
+        throw std::logic_error("Twhy Parsing is not complete.");
     }
-    assert( _why_.get() != NULL );
+    if( _why_.get() == NULL ) {
+        throw std::out_of_range("Twhy is NULL.");
+    }
     return *_why_; 
 }
 
