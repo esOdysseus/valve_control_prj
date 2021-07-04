@@ -50,6 +50,8 @@ public:
 
     std::string get_provider_id(void);
 
+    std::shared_ptr<std::list<std::string>> get_protocol_list( void );
+
     // Get Version-infomation of Common-API.
     std::string get_version(void);
 

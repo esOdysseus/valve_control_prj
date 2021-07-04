@@ -28,7 +28,7 @@ CuCMD::CuCMD(std::string my_app_path, std::string my_pvd_id)
 }
 
 CuCMD::CuCMD( alias::CAlias& myself, FlagType flag_val)
-: ICommand( myself ) {
+: ICommand( myself, flag_val ) {
     clear();
 
     _msg_id_ = gen_random_msg_id();
@@ -38,7 +38,7 @@ CuCMD::CuCMD( alias::CAlias& myself, FlagType flag_val)
 
 // Copy Constructor
 CuCMD::CuCMD( const CuCMD& cmd )
-: ICommand( cmd.get_from() ) {
+: ICommand( cmd.get_from(), NULL ) {
     clear();
 
     // copy command
@@ -137,9 +137,9 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         protocol->set_property("state", _state_);
         protocol->set_property("msg_id", _msg_id_);
 
-        if ( get_flag(E_FLAG_ACK_MSG) == false && 
-             get_flag(E_FLAG_ACTION_DONE) == false && 
-             get_flag(E_FLAG_KEEPALIVE) == false ) {
+        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG) == false && 
+             get_flag(E_FLAG::E_FLAG_ACTION_DONE) == false && 
+             get_flag(E_FLAG::E_FLAG_KEEPALIVE) == false ) {
             const char* body = NULL;
             Json_DataType json_manager;
 

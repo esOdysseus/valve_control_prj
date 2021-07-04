@@ -17,6 +17,8 @@ class CCommunicator;
 
 class CController {
 public:
+    using E_STATE = common::E_STATE;
+    using StateType = common::StateType;
     using CMDType = cmd::CuCMD;
     using CMDlistType = std::list<std::shared_ptr<CMDType>>;
     using E_PWR = enum E_PWR {

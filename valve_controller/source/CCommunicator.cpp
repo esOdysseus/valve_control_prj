@@ -53,9 +53,6 @@ void CCommunicator::soft_exit(void) {
 
     _ctrller_.soft_exit();
     _h_communicator_.reset();
-    
-    _myself_.clear();
-    _peer_.clear();
     set_state(E_STATE::E_NO_STATE, 0);
 }
 
@@ -153,7 +150,7 @@ void CCommunicator::set_state(E_STATE pos, StateType value) {
     }
 }
 
-StateType CCommunicator::get_state(E_STATE pos) {
+common::StateType CCommunicator::get_state(E_STATE pos) {
     assert( pos != E_STATE::E_NO_STATE);
     return _state_ & pos;
 }
@@ -261,10 +258,10 @@ void CCommunicator::set_state_of_cmd(std::shared_ptr<CMDType> &cmd) {
     cmd->set_state(cur_state);
 
     // Check ab-normal state & set flag
-    if ( cur_state & (E_STATE_OUT_OF_SERVICE | E_STATE_OCCURE_ERROR) ) {
+    if ( cur_state & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR) ) {
         cmd->set_flag(E_FLAG::E_FLAG_STATE_ERROR, 1);
     }
 }
 
 
-}   // namespace valve_pkg
+}   // valve_pkg

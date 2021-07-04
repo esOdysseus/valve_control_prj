@@ -485,7 +485,7 @@ void CController::set_state(E_STATE pos, StateType value) {
     _comm_->set_state(pos, value);
 }
 
-StateType CController::get_state(E_STATE pos) {
+common::StateType CController::get_state(E_STATE pos) {
     if( _comm_ == NULL ) {
         LOGERR("Communicator is NULL.");
         throw CException(E_ERROR::E_ERR_INVALID_NULL_VALUE);

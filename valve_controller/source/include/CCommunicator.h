@@ -16,8 +16,13 @@ namespace valve_pkg {
 
 class CCommunicator {
 public:
+    using E_STATE = common::E_STATE;
+    using StateType = common::StateType;
     using CommHandler = std::shared_ptr<ICommunicator>;
     using CMDType = cmd::CuCMD;
+
+private:
+    using E_FLAG = common::E_FLAG;
 
 public:
     CCommunicator(CommHandler handler, std::string& myapp_path, std::string& mypvd_id);

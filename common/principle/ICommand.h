@@ -80,16 +80,17 @@ public:
     using Twhat = principle::CWhat;
     using Thow = principle::CHow;
     using Twhy = std::string;
+    using FlagType = uint8_t;
+    static constexpr const char* PROTOCOL_NAME = "none";
 
 private:
     static constexpr const char* NAME = "defCMD";
     static constexpr const char* VERSION = "1.0.0";
-    static constexpr const char* PROTOCOL_NAME = "none";
 
 public:
     ICommand(std::string my_app_path, std::string my_pvd_id);
 
-    ICommand(const alias::CAlias& myself);
+    ICommand(const alias::CAlias& myself, FlagType flag_val);
 
     virtual ~ICommand(void);
 
@@ -105,6 +106,10 @@ public:
     virtual std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler );
 
     // getter
+    virtual unsigned long get_id(void) {    return 0;   };
+
+    virtual FlagType get_flag(FlagType pos=common::E_FLAG::E_FLAG_ALL) { return common::E_FLAG::E_FLAG_NONE; };
+
     const alias::CAlias& get_from(void) const { return _myself_from_; }
 
     double get_rcv_time(void) const { return _rcv_time_; }

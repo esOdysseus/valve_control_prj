@@ -101,7 +101,7 @@ ICommand::ICommand(std::string my_app_path, std::string my_pvd_id)
     assert(_myself_from_.empty() == false);
 }
 
-ICommand::ICommand(const alias::CAlias& myself)
+ICommand::ICommand(const alias::CAlias& myself, FlagType flag_val)
 : _myself_from_( myself ) {
     clear();
     assert(_myself_from_.empty() == false);

@@ -28,18 +28,18 @@
                 "where": "InDoor/House1/SmallRoom"   // single일때 만 유효하다. [Mandatory]
             },
             "svc-pvd": {
-                "dbg_receiver": {               // name of provider.
+                "def_debugger": {               // name of provider.
                     "provider-type": "udp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
                     "address": {                // describe address of alias.
-                        "ip": "192.168.1.3", // ip of alias that is destination.
+                        "ip": "192.168.1.2", // ip of alias that is destination.
                         "mask": "24",           // Network mask.
                         "port": "20000"         // port of alias.
                     }
                 },
-                "cmd_sender": {               // name of provider.
+                "cmd_tranceiver": {               // name of provider.
                     "provider-type": "tcp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
                     "address": {                // describe address of alias.
-                        "ip": "192.168.1.3", // ip of alias that is destination.
+                        "ip": "192.168.1.2", // ip of alias that is destination.
                         "mask": "24",           // Network mask.
                         "port": "12000"         // port of alias.
                     }
