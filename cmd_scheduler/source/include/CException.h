@@ -59,13 +59,6 @@ typedef enum E_ERROR {
 } E_ERROR;
 
 
-// exception() _GLIBCXX_USE_NOEXCEPT { }
-// virtual ~exception() _GLIBCXX_USE_NOEXCEPT;
-
-// /** Returns a C-style character string describing the general cause
-//  *  of the current error.  */
-// virtual const char* what() const _GLIBCXX_USE_NOEXCEPT;
-
 class CException: public std::exception
 {
 public:
@@ -75,7 +68,7 @@ public:
      *                 Hence, responsibility for deleting the char* lies
      *                 with the caller. 
      */
-    explicit CException(E_ERROR err_num) _GLIBCXX_USE_NOEXCEPT :
+    explicit CException(E_ERROR err_num):
       __err_n(err_num)
       {
       }
@@ -83,23 +76,23 @@ public:
     /** Destructor.
      * Virtual to allow for subclassing.
      */
-    ~CException(void) _GLIBCXX_USE_NOEXCEPT override {}
+    virtual ~CException(void) throw (){}
 
     /** Returns a pointer to the (constant) error description.
      *  @return A pointer to a const char*. The underlying memory
      *          is in posession of the Exception object. Callers must
      *          not attempt to free the memory.
      */
-    const char* what(void) const _GLIBCXX_USE_NOEXCEPT override {
+    virtual const char* what(void) const throw(){
         return exception_switch(__err_n);
     }
 
-    E_ERROR get(void) const {
+    E_ERROR get(void) {
         return __err_n;
     }
 
 private:
-    const char* exception_switch(E_ERROR __err_n) const _GLIBCXX_USE_NOEXCEPT {
+    const char* exception_switch(E_ERROR __err_n) const throw() {
         switch( __err_n ) {
         case E_ERR_FAIL_INSERT_DATA:
             return "E_ERR_FAIL_INSERT_DATA occured.";

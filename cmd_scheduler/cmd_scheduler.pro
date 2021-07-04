@@ -3,7 +3,7 @@ TEMPLATE = app
 QT -= gui core
 
 VER_MAJ = 0
-VER_MIN = 1
+VER_MIN = 2
 VER_PAT = 0
 VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
 
@@ -39,25 +39,14 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot    \
     $$COMMON_LIB_ROOT/lib/time    \
-    $$_PRO_FILE_PWD_/source    \
-    $$_PRO_FILE_PWD_/source/include    \
-    $$_PRO_FILE_PWD_/source/cmd_pkg    \
-    $$_PRO_FILE_PWD_/source/monitor_pkg \
-    $$_PRO_FILE_PWD_/source/monitor_pkg/base \
-    $$_PRO_FILE_PWD_/source/monitor_pkg/monitor_data \
-    $$_PRO_FILE_PWD_/source/proc_pkg    \
-    $$_PRO_FILE_PWD_/source/proc_pkg/base
+    $$COMMON_LIB_ROOT/principle    \
+    $$_PRO_FILE_PWD_/source/include
 
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/uCMDvalve/*.cpp)  \
-    $$files($$_PRO_FILE_PWD_/source/cmd_pkg/*.cpp) \
-    $$files($$_PRO_FILE_PWD_/source/monitor_pkg/*.cpp)  \
-    $$files($$_PRO_FILE_PWD_/source/monitor_pkg/base/*.cpp)  \
-    $$files($$_PRO_FILE_PWD_/source/monitor_pkg/monitor_data/*.cpp)  \
-    $$files($$_PRO_FILE_PWD_/source/proc_pkg/*.cpp) \
-    $$files($$_PRO_FILE_PWD_/source/proc_pkg/base/*.cpp)
+    $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
+    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)
     
 
 # for installation.
