@@ -1,0 +1,13 @@
+prefix=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../bin
+exec_prefix=${prefix}
+libdir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib
+includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../include
+
+
+Name: proto
+Description: Protocols library that support common-communicator.
+Version: 0.2.1
+Libs: -L${libdir} -lproto 
+Libs.private:    
+Cflags: -I${includedir}
+

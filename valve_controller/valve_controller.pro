@@ -13,8 +13,8 @@ VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
 
 # for building
 COMMON_LIB_ROOT=$$_PRO_FILE_PWD_/../common
-EXTERNAL_LIB_ROOT=$$COMMON_LIB_ROOT/lib/external_lib
-LIBS += -lpthread -lcommunicator -L$$EXTERNAL_LIB_ROOT/lib/$$CPU_ARCH
+COMM_LIB_ROOT=$$COMMON_LIB_ROOT/lib/communicator
+LIBS += -lpthread -lcommunicator -L$$COMM_LIB_ROOT/lib/$$CPU_ARCH
 
 DEFINES += LOGGER_TAG=\\\"APP\\\"
 DEFINES += VER_MAJ=$$VER_MAJ
@@ -33,7 +33,7 @@ equals(BUILD_MODE, "release") {
 
 INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
-    $$EXTERNAL_LIB_ROOT/include    \
+    $$COMM_LIB_ROOT/include    \
     $$COMMON_LIB_ROOT \
     $$COMMON_LIB_ROOT/principle   \
     $$COMMON_LIB_ROOT/lib/json    \

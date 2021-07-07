@@ -3,9 +3,15 @@
 
 #include <memory>
 #include <string>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <queue>
+#include <condition_variable>
+
 #include <MCommunicator.h>
 #include <ICommand.h>
-// #include <CMDs/CuCMD.h>
+#include <CDBhandler.h>
 
 namespace service {
 
@@ -33,18 +39,41 @@ private:
     CScheduler(CScheduler&&) = delete;                  // move constructor
     CScheduler& operator=(CScheduler&&) = delete;       // move operator
 
-    CScheduler( void ) = default;
+    CScheduler( void );
 
     void clear( void );
 
-    void handle_command( std::shared_ptr<cmd::ICommand>& cmd );
+    void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
 
-    // void handle_command( std::shared_ptr<cmd::CuCMD>& cmd );
+    void push_cmd( std::shared_ptr<cmd::ICommand>& cmd );
 
-    // void handle_def_command( std::shared_ptr<cmd::ICommand>& cmd );
+    std::shared_ptr<cmd::ICommand> pop_cmd( void );     // Blocking function.
+
+    /** Thread releated Functions. */
+    void create_threads(void);
+
+    void destroy_threads(void);
+
+    int handle_rx_cmd(void);
+
+    int handle_tx_cmd(void);
 
 private:
     std::shared_ptr<comm::MCommunicator>  _m_comm_mng_;
+
+    db::CDBhandler _m_db_;
+
+    /* Thread Routin variables */
+    std::atomic<bool> _m_is_continue_;
+
+    std::thread _mt_rcmd_handler_;       // Store of Received CMD. (Rx)
+
+    std::thread _mt_scmd_handler_;       // Trig of Send CMD. (Tx)
+
+    /** Blocking Queue for received CMDs */
+    std::mutex _mtx_queue_lock_;
+    std::condition_variable _m_queue_cv_;
+    std::queue<std::shared_ptr<cmd::ICommand>> _mv_cmds_;
 
 };
 

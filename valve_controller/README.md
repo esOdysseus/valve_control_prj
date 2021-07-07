@@ -39,10 +39,10 @@ $ bash ./build.sh -m release -t valve -arch x86
 ### Example
 - Environments
    - Arguments
-      1. Path-of-desp-Alias      : "${work}/common/lib/external_lib/config/desp_alias.json"
-      2. Path-of-desp-Protocol   : "${work}/common/lib/external_lib/config/desp_UniversalCMD_protocol.json"
+      1. Path-of-desp-Alias      : "${work}/common/lib/communicator/config/desp_alias.json"
+      2. Path-of-desp-Protocol   : "${work}/common/lib/communicator/config/desp_UniversalCMD_protocol.json"
    - Export-Variables
-      1. LD_LIBRARY_PATH : "${work}/common/lib/external_lib/lib/x86"
+      1. LD_LIBRARY_PATH : "${work}/common/lib/communicator/lib/x86"
       2. VALVE_GPIO_ROOT : "${work}/valve_controller/test/gpio"
 
 - You can test the APP. by using following guide-line.

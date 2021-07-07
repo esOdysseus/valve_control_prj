@@ -32,8 +32,8 @@ bool CScheduler::init( std::string file_path_alias, std::string file_path_proto 
             throw std::runtime_error("MCommunicator mem-allocation is failed.");
         }
 
-        _m_comm_mng_->register_listener( PVD_COMMANDER, std::bind(&CScheduler::handle_command, this, _1) );
-        _m_comm_mng_->register_listener( PVD_DEBUGGER, std::bind(&CScheduler::handle_command, this, _1) );
+        _m_comm_mng_->register_listener( PVD_COMMANDER, std::bind(&CScheduler::receive_command, this, _1) );
+        _m_comm_mng_->register_listener( PVD_DEBUGGER, std::bind(&CScheduler::receive_command, this, _1) );
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -46,10 +46,12 @@ void CScheduler::start( void ) {
         throw std::runtime_error("MCommunicator is NULL.");
     }
 
+    create_threads();
     _m_comm_mng_->start();
 }
 
 void CScheduler::exit( void ) {
+    destroy_threads();
     clear();
 }
 
@@ -62,18 +64,35 @@ CScheduler::~CScheduler(void) {
 /*********************************
  * Definition of Private Function.
  */
-void CScheduler::clear( void ) {
-    _m_comm_mng_.reset();
+CScheduler::CScheduler( void ) {
+    clear();
 }
 
-void CScheduler::handle_command( std::shared_ptr<cmd::ICommand>& cmd ) {
+void CScheduler::clear( void ) {
+    _m_comm_mng_.reset();
+    _m_is_continue_ = false;
+
+    {
+        std::unique_lock<std::mutex> lk(_mtx_queue_lock_);
+        while( _mv_cmds_.empty() == false ) {
+            _mv_cmds_.pop();
+        }
+    }
+}
+
+void CScheduler::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
     try {
         LOGD("Enter");
         if( cmd.get() == NULL ) {
             throw std::invalid_argument("Invalid CMD is NULL.");
         }
 
-        ;   // TODO
+        // Invalid CMD checking
+        if( cmd->is_parsed() == false ) {
+            throw std::invalid_argument("CMD is not decoded.");
+        }
+
+        push_cmd( cmd );
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -81,34 +100,150 @@ void CScheduler::handle_command( std::shared_ptr<cmd::ICommand>& cmd ) {
     }
 }
 
-// void CScheduler::handle_command( std::shared_ptr<cmd::CuCMD>& cmd ) {
-//     try {
-//         if( cmd.get() == NULL ) {
-//             throw std::invalid_argument("Invalid CMD is NULL.");
-//         }
+/** Push function for Blocking queue. */
+void CScheduler::push_cmd( std::shared_ptr<cmd::ICommand>& cmd ) {
+    try {
+        std::unique_lock<std::mutex> lk(_mtx_queue_lock_);
 
-//         ;   // TODO
-//     }
-//     catch ( const std::exception& e ) {
-//         LOGERR("%s", e.what());
-//         throw e;
-//     }
-// }
+        if (false == _m_is_continue_.load()) {
+            std::string err = "Thread termination is occured.";
+            throw std::out_of_range(err);
+        }
 
-// void CScheduler::handle_def_command( std::shared_ptr<cmd::ICommand>& cmd ) {
-//     try {
-//         if( cmd.get() == NULL ) {
-//             throw std::invalid_argument("Invalid CMD is NULL.");
-//         }
+        _mv_cmds_.emplace( cmd );
+        _m_queue_cv_.notify_all();
+    }
+    catch ( const std::out_of_range& e ) {
+        LOGW("%s", e.what());
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
 
-//         ;   // TODO
-//     }
-//     catch ( const std::exception& e ) {
-//         LOGERR("%s", e.what());
-//         throw e;
-//     }
-// }
+/** Pop function for Blocking queue. */
+std::shared_ptr<cmd::ICommand> CScheduler::pop_cmd( void ) {    // Blocking 
+    std::shared_ptr<cmd::ICommand> cmd;
+    try {
+        std::unique_lock<std::mutex> lk(_mtx_queue_lock_);
 
+        if ( (true == _mv_cmds_.empty()) && (true == _m_is_continue_.load()) ) {
+            _m_queue_cv_.wait(lk, [&]() {
+                return ((false == _mv_cmds_.empty()) || (false == _m_is_continue_.load()));
+            });
+        }
+
+        if (false == _m_is_continue_.load()) {
+            std::string err = "Thread termination is occured.";
+            throw std::out_of_range(err);
+        }
+
+        if( _mv_cmds_.empty() == true ) {
+            std::string err = "CMDs-queue is empty.";
+            throw std::logic_error(err);
+        }
+
+        cmd = _mv_cmds_.front();
+        _mv_cmds_.pop();
+    }
+    catch ( const std::out_of_range& e ) {
+        LOGW("%s", e.what());
+        throw e;
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return cmd;
+}
+
+
+/****
+ * Thread related functions
+ */
+void CScheduler::create_threads(void) {
+    try {
+        if( _m_is_continue_.exchange(true) == false ) {
+            LOGI("Create RX-cmd handle-thread.");
+            _mt_rcmd_handler_ = std::thread(&CScheduler::handle_rx_cmd, this);
+
+            LOGI("Create TX-cmd handle-thread.");
+            _mt_scmd_handler_ = std::thread(&CScheduler::handle_tx_cmd, this);
+
+            if ( _mt_rcmd_handler_.joinable() == false ) {
+                _m_is_continue_ = false;
+            }
+
+            if ( _mt_scmd_handler_.joinable() == false ) {
+                _m_is_continue_ = false;
+            }
+        }
+
+        if( _m_is_continue_ == false ) {
+            destroy_threads();
+            throw std::runtime_error("Creating Tx/Rx-CMD handle-threads are failed.");
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void CScheduler::destroy_threads(void) {
+    if( _m_is_continue_.exchange(false) == true ) {
+        if( _mt_rcmd_handler_.joinable() == true ) {
+            LOGI("Destroy RX-cmd handle-thread.");     // Destroy of RX-cmd handle-thread.
+            _mt_rcmd_handler_.join();
+        }
+
+        if( _mt_scmd_handler_.joinable() == true ) {
+            LOGI("Destroy TX-cmd handle-thread.");     // Destroy of TX-cmd handle-thread.
+            _mt_scmd_handler_.join();
+        }
+    }
+}
+
+/****
+ * Treading for RX/TX Command
+ */
+int CScheduler::handle_rx_cmd(void) {
+    while(_m_is_continue_.load()) {
+        try {
+            auto rcmd = pop_cmd();      // Blocking 
+
+            ;   // TODO Display 6-principle & Convert Task-Pair(Open/Close) base on Absolute-Time.
+            ;   // TODO Store Task-Pair for coresponding to One-CMD.
+
+        }
+        catch (const std::exception &e) {
+            LOGERR("%s", e.what());
+        }
+    }
+
+    LOGI("Exit RX-cmd handle-thread.");
+    return 0;
+}
+
+int CScheduler::handle_tx_cmd(void) {
+    while(_m_is_continue_.load()) {
+        try {
+            ;   // TODO If needed, load Task-Pair from Stored-CMDs for coresponding to One-CMD.
+            ;   // TODO Make a CMD it's consist of Task-Pair(Open/Close) base on Absolute-Time.
+
+            // wait 5 seconds
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+        }
+        catch (const std::exception &e) {
+            LOGERR("%s", e.what());
+        }
+    }
+
+    LOGI("Exit TX-cmd handle-thread.");
+    return 0;
+}
 
 
 }   // service

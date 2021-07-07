@@ -100,6 +100,8 @@ public:
 
     std::string version(void) const { return VERSION; };
 
+    bool is_parsed(void) const { return _is_parsed_; }
+
     // presentator
     virtual bool decode(std::shared_ptr<IProtocolInf>& protocol);
 
@@ -144,8 +146,6 @@ public:
     Twhy& why(void);
 
 protected:
-    bool is_parsed(void) const { return _is_parsed_; }
-
     void set_flag_parse( bool value, double rcv_time=0.0 );
 
     std::string extract_version(Json_DataType &json);

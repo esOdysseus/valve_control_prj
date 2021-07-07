@@ -1,12 +1,13 @@
 #!/bin/bash
 ROOT_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 export ROOT_PATH=${ROOT_PATH}
+DEF_CPU_ARCH="x86"
 
 # Setting default-value.
 BUILD_MODE=release
 BUILD_TARGET="valve"
-CPU_ARCH="x86"          # Available Values : x86 , armv7 , aarch64
-BOARD_TARGET="none"     # Available Values : none , orangepi-i96 , orangepi-pc+ , orangepi-zero+2H5
+CPU_ARCH=${DEF_CPU_ARCH}    # Available Values : x86 , armv7 , aarch64
+BOARD_TARGET="none"         # Available Values : none , orangepi-i96 , orangepi-pc+ , orangepi-zero+2H5
 
 
 #######################################
@@ -30,7 +31,7 @@ function main() {
     echo
 
     # Set enviroment for CROSS-COMPILE.
-    if [ "${CPU_ARCH}" != "x86" ]; then
+    if [ "${CPU_ARCH}" != "${DEF_CPU_ARCH}" ]; then
         echo "Set environment for CROSS-COMPILE of ${CPU_ARCH}."
         source env_for_cross_compile.sh  ${CPU_ARCH}  ${BOARD_TARGET}
     fi
@@ -40,7 +41,7 @@ function main() {
         "clean")    # build clean
             if [ ! -d "${BUILD_DIR}" ]; then
                 echo -e "\e[1;31m Can't clean. because Not exist BUILD_DIR folder. \e[0m"
-                exit 0
+                exit 1
             fi
 
             echo ">>>> Clear all-data of installation & objects. <<<<"
@@ -48,8 +49,12 @@ function main() {
             rm -rf ${INSTALL_DIR}
             ;;
         "all") # build all components
+            run_build_common_lib all
             run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin
             run_build_task  valve_controller  ${INSTALL_DIR}/valve_controller/bin
+            ;;
+        "common-lib")   # build common-lib
+            run_build_common_lib all
             ;;
         "server")     # build cmd_scheduler
             run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin
@@ -59,16 +64,17 @@ function main() {
             ;;
         "none")
             echo -e "\e[1;31m [ERROR] We need BUILD_TARGET. Please, insert -t option. \e[0m"
-            exit 0
+            exit 1
             ;;
         *) 
             echo -e "\e[1;31m [ERROR] Not Supported BUILD_TARGET.(${BUILD_TARGET}) \e[0m"
-            exit 0
+            exit 1
             ;;
     esac
 
     # Exit build-situation.
     cd ${ROOT_PATH}
+    exit 0      # Success & Exit script.
 }
 
 
@@ -101,8 +107,74 @@ function run_build_task() {
     make install
 }
 
-function get_input_parameter()
-{
+function run_build_common_lib() {
+    BUILD_TARGET=${1}
+    DESTDIR=${INSTALL_DIR}/common/lib
+    local BUILD_COMLIB_DIR=${BUILD_DIR}/common/lib
+
+    echo 
+    echo "----- Build Environment -----"
+    echo "BUILD_DIR=${BUILD_COMLIB_DIR}"
+    echo "BUILD_TARGET=${BUILD_TARGET}"
+    echo "BUILD_MODE=${BUILD_MODE}"
+    echo "DESTDIR=${DESTDIR}"
+    echo "CPU_ARCH=${CPU_ARCH}"
+    echo "BOARD_TARGET=${BOARD_TARGET}"
+    echo 
+
+    # Build Target
+    case ${BUILD_TARGET} in
+        "all") # build all components
+            build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            ;;
+        "sqlite")    # build sqlite
+            build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            ;;
+        *) 
+            echo -e "\e[1;31m [ERROR] Not Supported BUILD_TARGET common-lib.(${BUILD_TARGET}) \e[0m"
+            exit 1
+            ;;
+    esac
+}
+
+function build_common_sqlite() {
+    local BUILD_COMLIB_DIR=${1}/sqlite
+    local DESTDIR=${2}/sqlite
+    local SQLITE_SRC_PATH=${ROOT_PATH}/common/lib/sqlite/sqlite3_src
+    local OPTIONS='--enable-threadsafe --enable-dynamic-extensions --enable-readline'
+    local INSTALL_OPT="--prefix=${DESTDIR}"
+
+    if [ ! -d "${BUILD_COMLIB_DIR}" ]; then
+        mkdir -p ${BUILD_COMLIB_DIR}
+    fi
+
+    if [ ! -d "${DESTDIR}" ]; then
+        mkdir -p ${DESTDIR}
+    fi
+
+    cd ${BUILD_COMLIB_DIR}
+    echo 
+    echo "----- Start to build SQLite -----"
+    if [ "${CPU_ARCH}" == "${DEF_CPU_ARCH}" ]; then
+        echo "- CPU-ARCH = ${CPU_ARCH}"
+        CFLAGS="-Os" ${SQLITE_SRC_PATH}/configure ${OPTIONS} ${INSTALL_OPT}
+    else
+        echo "- CROSS-CPU-ARCH = ${CROSS_CPU_ARCH} (doing Cross-Compile)"
+        CFLAGS="-Os" ${SQLITE_SRC_PATH}/configure --host=${CROSS_CPU_ARCH} ${OPTIONS} ${INSTALL_OPT}
+    fi
+    make
+    
+    echo 
+    echo "----- Start to install SQLite -----"
+    echo 
+    make install
+
+    echo 
+    echo "----- Done SQLite -----"
+    echo 
+}
+
+function get_input_parameter() {
     echo "Get input parameters = $*"
 
     NONE_TYPE="none"
@@ -132,7 +204,7 @@ function get_input_parameter()
                         ;;
                     * )
                         echo -e "\e[1;31m [ERROR] Invalid input-head. (${IN_HEAD}) \e[0m"
-                        exit 0
+                        exit 1
                 esac
                 ;;
         esac

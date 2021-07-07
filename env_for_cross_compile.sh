@@ -15,10 +15,12 @@ case ${CPU_ARCH} in
             "orangepi-pc+" )    # valid tool-chain path !!
                 TOOLCHAIN_PATH="/usr/local/gcc-linaro/arm-linux-gnueabihf/4.9.4_x86_64"
                 CROSS_COMPILER_PREFIX="arm-linux-gnueabihf-"
+                CROSS_CPU_ARCH="arm-linux-gnueabihf"
                 ;;
             "orangepi-i96" )    # valid tool-chain path !!
                 TOOLCHAIN_PATH="/usr/local/gcc-linaro/arm-linux-gnueabihf/4.9.4_x86_64"
                 CROSS_COMPILER_PREFIX="arm-linux-gnueabihf-"
+                CROSS_CPU_ARCH="arm-linux-gnueabihf"
                 ;;
             * ) 
                 echo -e "\e[1;31m [ERROR] Not Supported BOARD_TARGET.(${BOARD_TARGET}) \e[0m"
@@ -26,6 +28,7 @@ case ${CPU_ARCH} in
         esac
 
         # Set Cross-Compiler Variables & Environment.
+        export CROSS_CPU_ARCH="${CROSS_CPU_ARCH}"
         export CC="${CROSS_COMPILER_PREFIX}gcc"
         export CXX="${CROSS_COMPILER_PREFIX}g++"
         export LINK="${CROSS_COMPILER_PREFIX}g++"
@@ -42,6 +45,7 @@ case ${CPU_ARCH} in
             "orangepi-zero+2H5" )   # valid tool-chain path !!
                 TOOLCHAIN_PATH="/usr/local/gcc-linaro/aarch64-linux-gnu/8.3.0_x86_64"
                 CROSS_COMPILER_PREFIX="aarch64-linux-gnu-"
+                CROSS_CPU_ARCH="aarch64-linux-gnu"
                 ;;
             * ) 
                 echo -e "\e[1;31m [ERROR] Not Supported BOARD_TARGET.(${BOARD_TARGET}) \e[0m"
@@ -49,6 +53,7 @@ case ${CPU_ARCH} in
         esac
 
         # Set Cross-Compiler Variables & Environment.
+        export CROSS_CPU_ARCH="${CROSS_CPU_ARCH}"
         export CC="${CROSS_COMPILER_PREFIX}gcc"
         export CXX="${CROSS_COMPILER_PREFIX}g++"
         export LINK="${CROSS_COMPILER_PREFIX}g++"

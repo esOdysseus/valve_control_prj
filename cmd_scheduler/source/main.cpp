@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
         auto service = service::CScheduler::get_instance();
         service->init( argv[1], argv[2] );
         // start service.
+        // TODO time-sync base on GPS time.
         service->start();
 
 
