@@ -1,4 +1,7 @@
+#include <unistd.h>
+
 #include <sqlite3_kes.h>
+#include <logger.h>
 
 namespace db_pkg {
 
@@ -15,8 +18,7 @@ IDBsqlite3::IDBsqlite3( const std::string& db_path ) {
         _m_db_path_ = db_path;
     }
     catch( const std::exception& e ) {
-        std::cout << "IDBsqlite3::IDBsqlite3(): " << db_path << " loading is failed." << std::endl;
-        std::cout << "[Error] " << e.what() << std::endl;
+        LOGERR("%s", e.what());
         exit();
     }
 }
@@ -26,40 +28,67 @@ IDBsqlite3::~IDBsqlite3(void) {
 }
 
 void IDBsqlite3::start(void) {
-    if( _m_db_path_.empty() == true ) {
-        throw std::runtime_error("db-path is NULL.");
-    }
+    try {
+        if( _m_db_path_.empty() == true ) {
+            throw std::logic_error("db-path is NULL.");
+        }
 
-    open(_m_db_path_);
+        open(_m_db_path_);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 int IDBsqlite3::query_insert( std::string context ) {
-    return execute_query( "INSERT INTO " + context );
+    // context sample: "{table}({key01},{key02},{key0x}) VALUES('value01',value02,'value0x')"
+    return execute_query( "INSERT INTO " + context + ";" );
 }
 
 int IDBsqlite3::query_insert_replace( std::string context ) {
-    return execute_query( "INSERT OR REPLACE INTO " + context );
+    // context sample: "{table}({key01},{key02},{key0x}) VALUES('value01',value02,'value0x')"
+    return execute_query( "INSERT OR REPLACE INTO " + context + ";" );
+}
+
+int IDBsqlite3::query_update( std::string context ) {
+    // context sample: "{table} SET {key01} = 'value', {key02} = 'value' WHERE id = 1"
+    return execute_query( "UPDATE " + context + ";" );
+}
+
+int IDBsqlite3::query_delete( std::string context ) {
+    // context sample: "{table} WHERE id = 1"
+    return execute_query( "DELETE FROM " + context + ";" );         // Blocking function.
 }
 
 int IDBsqlite3::query_select( std::string context, TCBselect func ) {
-    return execute_query( "SELECT " + context, &func );         // Blocking function.
+    // context sample: "* FROM {table} WHERE id = 1"
+    return execute_query( "SELECT " + context + ";", &func );         // Blocking function.
 }
 
 std::shared_ptr<std::vector<IDBsqlite3::Trecord>> IDBsqlite3::query_select( std::string context ) {
-    std::shared_ptr<std::vector<Trecord>> records = std::make_shared<std::vector<Trecord>>();
-    TCBselect lamda_func = [&records](Trecord& record) -> void {
-        std::cout << "push record to record-vector." << std::endl;
-        records->push_back(record);
-    };
+    try {
+        std::shared_ptr<std::vector<Trecord>> records = std::make_shared<std::vector<Trecord>>();
+        TCBselect lamda_func = [&records](Trecord& record) -> void {
+            LOGD("push record to record-vector.");
+            records->push_back(record);
+        };
 
-    if( records.get() == NULL ) {
-        throw std::runtime_error("records vector-memory allocation is failed.");
-    }
+        if( records.get() == NULL ) {
+            throw std::runtime_error("records vector-memory allocation is failed.");
+        }
 
-    if( execute_query( "SELECT " + context, &lamda_func ) != SQLITE_OK ) {  // Blocking function.
-        throw std::runtime_error("SELECT-query execution is failed.");
+        // context sample: "* FROM {table} WHERE id = 1"
+        if( execute_query( "SELECT " + context + ";", &lamda_func ) != SQLITE_OK ) {  // Blocking function.
+            throw std::runtime_error("SELECT-query execution is failed.");
+        }
+
+        return records;
     }
-    return records;
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 
@@ -71,14 +100,21 @@ int IDBsqlite3::execute_query(const std::string&& query, TCBselect* pfunc) {
     char *zErrMsg = 0;
 
     if( _m_inst_ == NULL ) {
-        std::cout << "IDBsqlite3::execute_query() DB-instance is NULL." << std::endl;
+        LOGERR("DB-instance is NULL.");
         return rc;
     }
 
-    rc = sqlite3_exec(_m_inst_, query.c_str(), _m_cb_onselect_, (void*)pfunc, &zErrMsg);    // Block function until done calling call-back.
+    do {
+        rc = sqlite3_exec(_m_inst_, query.c_str(), _m_cb_onselect_, (void*)pfunc, &zErrMsg);    // Block function until done calling call-back.
+        if( rc == SQLITE_BUSY ) {
+            LOGW("100ms sleep because of SQLITE_BUSY.");
+            usleep(100000);     // delay 100 ms
+        }
+    } while(rc == SQLITE_BUSY);
+
     if( rc != SQLITE_OK ){
-        std::cout << "IDBsqlite3::execute_query(): Executing(" << query << ") is failed." << std::endl;
-        std::cout << "[Error] SQL error(rc=" << rc << "): " << zErrMsg;
+        LOGERR("Executing(%s) is failed.", query.data());
+        LOGERR("SQL error(rc=%d): %s", rc, zErrMsg);
         sqlite3_free(zErrMsg);
     }
     return rc;
@@ -89,14 +125,21 @@ int IDBsqlite3::execute_query(const std::string& query, TCBselect* pfunc) {
     char *zErrMsg = 0;
 
     if( _m_inst_ == NULL ) {
-        std::cout << "IDBsqlite3::execute_query() DB-instance is NULL." << std::endl;
+        LOGERR("DB-instance is NULL.");
         return rc;
     }
 
-    rc = sqlite3_exec(_m_inst_, query.c_str(), _m_cb_onselect_, (void*)pfunc, &zErrMsg);    // Block function until done calling call-back.
+    do {
+        rc = sqlite3_exec(_m_inst_, query.c_str(), _m_cb_onselect_, (void*)pfunc, &zErrMsg);    // Block function until done calling call-back.
+        if( rc == SQLITE_BUSY ) {
+            LOGW("100ms sleep because of SQLITE_BUSY.");
+            usleep(100000);     // delay 100 ms
+        }
+    } while(rc == SQLITE_BUSY);
+
     if( rc != SQLITE_OK ){
-        std::cout << "IDBsqlite3::execute_query(): Executing(" << query << ") is failed." << std::endl;
-        std::cout << "[Error] SQL error(rc=" << rc << "): " << zErrMsg;
+        LOGERR("Executing(%s) is failed.", query.data());
+        LOGERR("SQL error(rc=%d): %s", rc, zErrMsg);
         sqlite3_free(zErrMsg);
     }
     return rc;
@@ -113,52 +156,58 @@ void IDBsqlite3::clear(void) {
 }
 
 void IDBsqlite3::open(const std::string& db_path) {
-    if( _m_inst_ != NULL ) {
-        std::string err = "Already DB-instance(" + db_path + ") is created.";
-        throw std::runtime_error(err);
-    }
-
-    auto itr_locker = _mtx_lock_.find(db_path);
-    if( itr_locker == _mtx_lock_.end() ) {
-        std::string err = "Can not find " + db_path + " in mapper of DB-open-mutex-locker.";
-        throw std::runtime_error(err);
-    }
-
-    std::cout << "Start IDBsqlite3::open() function." << std::endl;
-    {
-        int rc = SQLITE_ERROR;
-        bool db_exist_flag = false;
-        std::lock_guard<std::mutex> locker(itr_locker->second);
-
-        /* Check whether database file exist. */
-        db_exist_flag = check_file_exist(db_path);
-        std::cout << "Is exist " + db_path + " file? (result=" << db_exist_flag << ")" << std::endl;
-
-        /* Open database */
-        rc = sqlite3_open_v2(db_path.c_str(), &_m_inst_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-        if( rc != SQLITE_OK ) {
-            std::string err = "Can't open database(rc=" + std::to_string(rc) + "): " + std::string( sqlite3_errmsg(_m_inst_) );
-            throw std::runtime_error(err);
+    try {
+        if( _m_inst_ != NULL ) {
+            std::string err = "Already DB-instance(" + db_path + ") is created.";
+            throw std::logic_error(err);
         }
 
-        /* Configure database-settings */
-        std::cout << "Opened database successfully rc=" << rc << ", db-instance=" << _m_inst_ << std::endl;
-        if( db_exist_flag == false ) {
-            std::cout << "Try to change Journal-mode to WAL." << std::endl;
-            if( sqlite3_exec(_m_inst_, "PRAGMA journal_mode = WAL", NULL, NULL, NULL ) != SQLITE_OK ) {
-                throw std::runtime_error("Can not change journal-mode=WAL.");
+        auto itr_locker = _mtx_lock_.find(db_path);
+        if( itr_locker == _mtx_lock_.end() ) {
+            std::string err = "Can not find " + db_path + " in mapper of DB-open-mutex-locker.";
+            throw std::logic_error(err);
+        }
+
+        LOGD("Start function.");
+        {
+            int rc = SQLITE_ERROR;
+            bool db_exist_flag = false;
+            std::lock_guard<std::mutex> locker(itr_locker->second);
+
+            /* Check whether database file exist. */
+            db_exist_flag = check_file_exist(db_path);
+            LOGI("Is exist %s file? (result=%d)", db_path.c_str(), db_exist_flag);
+
+            /* Open database */
+            rc = sqlite3_open_v2(db_path.c_str(), &_m_inst_, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+            if( rc != SQLITE_OK ) {
+                std::string err = "Can't open database(rc=" + std::to_string(rc) + "): " + std::string( sqlite3_errmsg(_m_inst_) );
+                throw std::runtime_error(err);
             }
 
-            create_table_model();
+            /* Configure database-settings */
+            LOGD("Opened database successfully rc=%d, db-instance=0x%X", rc, _m_inst_);
+            if( db_exist_flag == false ) {
+                LOGI("Try to change Journal-mode to WAL.");
+                if( sqlite3_exec(_m_inst_, "PRAGMA journal_mode = WAL", NULL, NULL, NULL ) != SQLITE_OK ) {
+                    throw std::runtime_error("Can not change journal-mode=WAL.");
+                }
+            }
+        }
+
+        /* Create Tables */
+        create_table_model();
+
+        int(*callback)(void *,sqlite3*,const char*,int) =  reinterpret_cast<int(*)(void *,sqlite3*,const char*,int)>(&IDBsqlite3::callback_oncommit);
+        /* Regist call-back for commit. */
+        if( sqlite3_wal_hook(_m_inst_, callback, this ) == NULL ) {
+            std::string err = "Can not regist cb_oncommit function pointer. (" + std::string( sqlite3_errmsg(_m_inst_) ) + ")";
+            throw std::runtime_error(err);
         }
     }
-
-    int(*callback)(void *,sqlite3*,const char*,int) =  reinterpret_cast<int(*)(void *,sqlite3*,const char*,int)>(&IDBsqlite3::callback_oncommit);
-
-    /* Regist call-back for commit. */
-    if( sqlite3_wal_hook(_m_inst_, callback, this ) == NULL ) {
-        std::string err = "Can not regist cb_oncommit function pointer. (" + std::string( sqlite3_errmsg(_m_inst_) ) + ")";
-        throw std::runtime_error(err);
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
     }
 }
 
@@ -170,21 +219,33 @@ void IDBsqlite3::exit(void) {
 }
 
 int IDBsqlite3::callback_oncommit(TdbInst* db, const char* source, int pages) {
-    const std::string src_name = std::string(source);
-    return cb_oncommit( src_name, pages );
+    try {
+        const std::string src_name = std::string(source);
+        return cb_oncommit( src_name, pages );
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
+    return SQLITE_ERROR;
 };
 
 int IDBsqlite3::callback_onselect(TCBselect* pfunc, int argc, char **argv, char **azColName) {
     Trecord record;
 
-    if( pfunc != NULL ) {
-        for(int i = 0; i<argc; i++) {
-            record[ azColName[i] ] = argv[i] ? argv[i] : "NULL";
-        }
+    try {
+        if( pfunc != NULL ) {
+            for(int i = 0; i<argc; i++) {
+                record[ azColName[i] ] = argv[i] ? argv[i] : "NULL";
+            }
 
-        (*pfunc)( record );     // call custom-function.
+            (*pfunc)( record );     // call custom-function.
+        }
+        return SQLITE_OK;
     }
-    return SQLITE_OK;
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
+    return SQLITE_ERROR;
 };
 
 

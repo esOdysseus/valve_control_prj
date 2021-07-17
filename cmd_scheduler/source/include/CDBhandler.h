@@ -26,9 +26,9 @@ private:
     void clear( void );
 
 private:
-    CDBsqlite _m_db_future_;
-    CDBsqlite _m_db_now_;
-    CDBsqlite _m_db_past_;
+    db_pkg::CDBsqlite _m_db_future_;
+    db_pkg::CDBsqlite _m_db_now_;
+    db_pkg::CDBsqlite _m_db_past_;
 
     static constexpr const char * DB_NAME_FUTURE = "db_future.db";
     static constexpr const char * DB_NAME_NOW = "db_now.db";
@@ -51,7 +51,8 @@ private:
         "EventBase( \
             id          INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,   \
             timestamp   TEXT        UNIQUE                              NOT NULL,   \
-            cmd         TEXT                                            NOT NULL    \
+            cmd         TEXT                                            NOT NULL,   \
+            state       TEXT                                            NOT NULL    \
         )",
         NULL
     };
@@ -59,7 +60,8 @@ private:
         "EventBase( \
             id          INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,   \
             timestamp   TEXT        UNIQUE                              NOT NULL,   \
-            cmd         TEXT                                            NOT NULL    \
+            cmd         TEXT                                            NOT NULL,   \
+            state       TEXT                                            NOT NULL    \
         )",
         NULL
     };

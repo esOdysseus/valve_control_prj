@@ -5,10 +5,10 @@
 
 #include <sqlite3_kes.h>
 
-namespace db {
+namespace db_pkg {
 
 
-class CDBsqlite: public db_pkg::IDBsqlite3 {
+class CDBsqlite: public IDBsqlite3 {
 public:
     CDBsqlite( const std::string db_path, const char* const* tables_model )
     : db_pkg::IDBsqlite3(db_path) {
@@ -33,7 +33,7 @@ protected:
     void create_table_model( void ) override {
         std::cout << "CDBsqlite::create_table_model() is called." << std::endl;
         for( auto itr=_m_tables_model_.begin(); itr!=_m_tables_model_.end(); itr++ ) {
-            execute_query( "CREATE TABLE " + *itr + ";" );
+            execute_query( "CREATE TABLE IF NOT EXISTS " + *itr + ";" );
         }
     }
 
@@ -50,7 +50,7 @@ private:
 };
 
 
-}   // namespace db
+}   // namespace db_pkg
 
 
 #endif // _CLASS_SQLITE_DATABASE_DEFINITION_H_

@@ -44,6 +44,10 @@ public:
 
     int query_insert_replace( std::string context );
 
+    int query_update( std::string context );
+
+    int query_delete( std::string context );
+
     int query_select( std::string context, TCBselect func );
 
     std::shared_ptr<std::vector<Trecord>> query_select( std::string context );

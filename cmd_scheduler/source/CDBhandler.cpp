@@ -26,7 +26,7 @@ CDBhandler::CDBhandler( void )
         db_list.push_back(DB_NAME_FUTURE);
         db_list.push_back(DB_NAME_NOW);
         db_list.push_back(DB_NAME_PAST);
-        db_pkg::IDBsqlite3::regist_all_of_db( db_list );
+        db_pkg::CDBsqlite::regist_all_of_db( db_list );
 
         ;   // TODO
     }

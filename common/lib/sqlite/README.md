@@ -7,6 +7,8 @@
 ## Library-Codes
 - sqlite3_kes.h, sqlite3_kes.cpp
   > c++ class library for supporting multiple-SELECT & INSERT base on WAL mode in multiple Processor.
+- CDBsqlite.h
+  > example class that use sqlite3 c++ class-library.
 
 ## Reference Site
 - https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm
