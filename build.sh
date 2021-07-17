@@ -44,6 +44,7 @@ function main() {
                 exit 1
             fi
 
+            echo
             echo ">>>> Clear all-data of installation & objects. <<<<"
             rm -rf ${BUILD_DIR}
             rm -rf ${INSTALL_DIR}
@@ -55,6 +56,15 @@ function main() {
             ;;
         "common-lib")   # build common-lib
             run_build_common_lib all
+            ;;
+        "server-rebuild")     # build cmd_scheduler
+            echo
+            echo ">>>> Clear all-data of CMD-Scheduler. <<<<"
+            rm -rf ${BUILD_DIR}/cmd_scheduler
+            rm -rf ${INSTALL_DIR}/cmd_scheduler
+            echo
+            echo ">>>> Re-build CMD-Scheduler. <<<<"
+            run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin
             ;;
         "server")     # build cmd_scheduler
             run_build_task  cmd_scheduler  ${INSTALL_DIR}/cmd_scheduler/bin

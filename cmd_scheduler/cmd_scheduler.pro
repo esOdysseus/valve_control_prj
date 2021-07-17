@@ -41,6 +41,7 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot    \
     $$COMMON_LIB_ROOT/lib/time    \
+    $$COMMON_LIB_ROOT/lib/sqlite    \
     $$COMMON_LIB_ROOT/principle    \
     $$_PRO_FILE_PWD_/source/include
 
@@ -48,8 +49,9 @@ INCLUDEPATH += \
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)
-    
+    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)   \
+    $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp)
+
 
 # for installation.
 EXTRA_BINFILES = \
