@@ -19,7 +19,7 @@ typedef enum E_ERROR {
     E_ERR_FAIL_CHECKING_CMD_PROC,
     E_ERR_FAIL_MAKING_PACKET        = 11,
     E_ERR_FAIL_SENDING_PACKET,
-    E_ERR_FAIL_SENDING_ACT_DONE,
+    E_ERR_FAIL_SENDING_ACT_START,
     E_ERR_FAIL_CREATING_THREAD      = 14,
     E_ERR_FAIL_INVOKING_SHELL,
     E_ERR_FAIL_MEM_ALLOC,
@@ -110,8 +110,8 @@ private:
             return "E_ERR_FAIL_MAKING_PACKET occured.";
         case E_ERR_FAIL_SENDING_PACKET:
             return "E_ERR_FAIL_SENDING_PACKET occured.";
-        case E_ERR_FAIL_SENDING_ACT_DONE:
-            return "E_ERR_FAIL_SENDING_ACT_DONE occured.";
+        case E_ERR_FAIL_SENDING_ACT_START:
+            return "E_ERR_FAIL_SENDING_ACT_START occured.";
         case E_ERR_FAIL_CREATING_THREAD:
             return "E_ERR_FAIL_CREATING_THREAD occured.";
         case E_ERR_FAIL_INVOKING_SHELL:

@@ -77,6 +77,20 @@ void MCommunicator::start( void ) {
     }
 }
 
+/* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
+unsigned long MCommunicator::request( std::string peer, std::string json_cmd, bool require_resp ) {
+    unsigned long msg_id = 0;
+
+    try {
+        ;   // TODO
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
+
+    return msg_id;
+}
+
 // bool MCommunicator::send_cmd_done(std::shared_ptr<CMDType> &cmd) {
 //     // TODO
 //     return false;
@@ -284,7 +298,7 @@ bool MCommunicator::send_without_payload( const alias::CAlias& peer,
     std::shared_ptr<cmd::CuCMD> simple_msg;
     std::shared_ptr<payload::CPayload> new_payload;
     assert( flag == E_FLAG::E_FLAG_ACK_MSG || 
-            flag == E_FLAG::E_FLAG_ACTION_DONE || 
+            flag == E_FLAG::E_FLAG_ACTION_START || 
             flag == E_FLAG::E_FLAG_KEEPALIVE );
 
     try {

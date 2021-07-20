@@ -11,13 +11,13 @@ namespace common {
  ******************************/
 typedef enum E_FLAG {
     E_FLAG_NONE = 0,
-    E_FLAG_REQUIRE_RESP = 0x01,     // 0: not-require RESP      , 1: require RESP
+    E_FLAG_REQUIRE_RESP = 0x01,     // 0: not-require RESP      , 1: require RESP (ACT-DONE or RESP)
     E_FLAG_REQUIRE_ACK  = 0x02,     // 0: not-require ACK       , 1: require ACK
-    E_FLAG_REQUIRE_ACT  = 0x04,     // 0: not-require ACT-DONE  , 1: require ACT-DONE
+    E_FLAG_REQUIRE_ACT  = 0x04,     // 0: not-require ACT-START , 1: require ACT-START
     E_FLAG_KEEPALIVE    = 0x08,     // 0: not keep-alive msg    , 1: keep-alive msg
     E_FLAG_RESP_MSG     = 0x10,     // 0: REQ/PUB message       , 1: RESP message
     E_FLAG_ACK_MSG      = 0x20,     // 0: not ack message       , 1: ACK message
-    E_FLAG_ACTION_DONE  = 0x40,     // 0: not act-done msg      , 1: ACT-DONE msg
+    E_FLAG_ACTION_START = 0x40,     // 0: not act-start msg     , 1: ACT-START msg
     E_FLAG_STATE_ERROR  = 0x80,     // 0: normal state          , 1: abnormal state
     E_FLAG_ALL          = 0xFF
 } E_FLAG;

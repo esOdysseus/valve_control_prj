@@ -116,12 +116,12 @@ void CCommunicator::cb_abnormally_quit(const std::exception &e) {
     LOGW("Called. arg(error=%s)", e.what());
 }
 
-bool CCommunicator::conditional_send_actdone(std::shared_ptr<CMDType> &valve_cmd) {
+bool CCommunicator::conditional_send_act_start(std::shared_ptr<CMDType> &valve_cmd) {
     try {
         if( (bool)(valve_cmd->get_flag(E_FLAG::E_FLAG_REQUIRE_ACT)) == true ) {
-            LOGD("Try Sending ACTION-DONE msg of ID(%d).", valve_cmd->get_id());
+            LOGD("Try Sending ACTION-START msg of ID(%d).", valve_cmd->get_id());
             return send_simple(valve_cmd->get_from(), 
-                               E_FLAG::E_FLAG_ACTION_DONE, 
+                               E_FLAG::E_FLAG_ACTION_START, 
                                valve_cmd->get_id());
         }
     }
@@ -212,7 +212,7 @@ bool CCommunicator::send_simple(alias::CAlias target, E_FLAG flag, unsigned long
     std::shared_ptr<CMDType> simple_msg;
     std::shared_ptr<payload::CPayload> new_payload;
     assert( flag == E_FLAG::E_FLAG_ACK_MSG || 
-            flag == E_FLAG::E_FLAG_ACTION_DONE || 
+            flag == E_FLAG::E_FLAG_ACTION_START || 
             flag == E_FLAG::E_FLAG_KEEPALIVE );
     
     try {

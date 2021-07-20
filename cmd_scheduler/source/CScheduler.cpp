@@ -214,8 +214,18 @@ int CScheduler::handle_rx_cmd(void) {
         try {
             auto rcmd = pop_cmd();      // Blocking 
 
-            ;   // TODO Display 6-principle & Convert Task-Pair(Open/Close) base on Absolute-Time.
-            ;   // TODO Store Task-Pair for coresponding to One-CMD.
+            // Display 6-principle
+
+            // If "when" is relative-time or absolute-time is under now + 5 seconds, (Not "period when")
+            // Then trigger peer to do activity by the CMD immediatlly.
+
+            // Check whether CMD is completed Task-Pair case, or not.
+
+            // If CMD is in-completed Task-Pair case, then throw Exception.
+
+            // Classfy which When-info of CMD is EventBase-type or PeriodBase-type.
+
+            // Store json-data of body in CMD to Database(Future-DB) according to type-info of "when" in CMD.
 
         }
         catch (const std::exception &e) {
@@ -230,8 +240,22 @@ int CScheduler::handle_rx_cmd(void) {
 int CScheduler::handle_tx_cmd(void) {
     while(_m_is_continue_.load()) {
         try {
-            ;   // TODO If needed, load Task-Pair from Stored-CMDs for coresponding to One-CMD.
-            ;   // TODO Make a CMD it's consist of Task-Pair(Open/Close) base on Absolute-Time.
+            // Load json-dataes from DataBase(Future-DB) if "when" of CMD is under now + 5 seconds.
+            //      We have to load json-data per tables. (EventBase/PeriodBase)
+            //      When we load json-data from PeriodBase tables, We must convert "period when" to "one-time when".
+
+            // we need lock for NOW-DB consistency-timing.
+
+            // Trig peer to do activity according to a json-data. (send json-data to peer)
+            //      We will get msg-id from MCommunicator->request()
+            //      If msg-id == 0, then try again sending it with random wait. (Max retry 3 times.)
+
+            // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
+            // But msg-id == 0, then append record to DataBase(Now-DB) with state == FAIL & msg-id.
+
+            // we need unlock for NOW-DB consistency-timing.
+
+            // Remove a record that is sent to peer from DataBase(Future-DB).
 
             // wait 5 seconds
             std::this_thread::sleep_for(std::chrono::seconds(5));

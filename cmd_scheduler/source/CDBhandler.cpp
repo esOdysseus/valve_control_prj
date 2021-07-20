@@ -22,13 +22,16 @@ CDBhandler::CDBhandler( void )
   _m_db_past_(DB_NAME_PAST, TABLE_MODEL_PAST) {
     try {
         std::vector<std::string> db_list;
-
+        // Register DBs
         db_list.push_back(DB_NAME_FUTURE);
         db_list.push_back(DB_NAME_NOW);
         db_list.push_back(DB_NAME_PAST);
         db_pkg::CDBsqlite::regist_all_of_db( db_list );
 
-        ;   // TODO
+        // Start DBs
+        _m_db_future_.start();
+        _m_db_now_.start();
+        _m_db_past_.start();
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -42,10 +45,6 @@ CDBhandler::~CDBhandler( void ) {
 bool CDBhandler::init( void ) {
     try {
         ;   // TODO
-
-        _m_db_future_.start();
-        _m_db_now_.start();
-        _m_db_past_.start();
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());

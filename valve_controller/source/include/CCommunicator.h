@@ -41,7 +41,7 @@ public:
     void cb_abnormally_quit(const std::exception &e);
 
     /** Functions for Thread */
-    bool conditional_send_actdone(std::shared_ptr<CMDType> &valve_cmd);
+    bool conditional_send_act_start(std::shared_ptr<CMDType> &valve_cmd);
 
     void set_state(E_STATE pos, StateType value);
 

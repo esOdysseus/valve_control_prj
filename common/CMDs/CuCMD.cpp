@@ -138,7 +138,7 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         protocol->set_property("msg_id", _msg_id_);
 
         if ( get_flag(E_FLAG::E_FLAG_ACK_MSG) == false && 
-             get_flag(E_FLAG::E_FLAG_ACTION_DONE) == false && 
+             get_flag(E_FLAG::E_FLAG_ACTION_START) == false && 
              get_flag(E_FLAG::E_FLAG_KEEPALIVE) == false ) {
             const char* body = NULL;
             Json_DataType json_manager;

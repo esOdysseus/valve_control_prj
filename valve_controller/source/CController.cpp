@@ -248,10 +248,10 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
 
         // write GPIO with value.
         if( (result = valve_set(t_gpio, t_gpio_value))==true && power==E_PWR::E_PWR_ENABLE ) {
-            // if need it, then send ACT_DONE message to server.
-            if( _comm_->conditional_send_actdone(valve_cmd) != true ) {
-                LOGERR("Can not send ACT-Done message.");
-                throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_DONE);
+            // if need it, then send ACT_START message to server.
+            if( _comm_->conditional_send_act_start(valve_cmd) != true ) {
+                LOGERR("Can not send ACT-Start message.");
+                throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_START);
             }
         }
     }
