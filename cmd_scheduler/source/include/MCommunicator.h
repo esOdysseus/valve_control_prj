@@ -43,7 +43,7 @@ public:
     void start( void );
 
     /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
-    unsigned long request( std::string peer, std::string json_cmd, bool require_resp=true );
+    unsigned long request( const alias::CAlias& peer, const std::string& json_cmd, bool require_resp=true );
 
     // bool send_cmd_done(std::shared_ptr<CMDType> &cmd);
 

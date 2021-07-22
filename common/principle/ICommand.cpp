@@ -148,6 +148,7 @@ bool ICommand::decode(std::shared_ptr<IProtocolInf>& protocol) {
             LOGD( "Success parse of Json buffer." );
 
             // mark receive-time of this packet using my-system time.
+            _payload_ = std::string(payload);
             set_flag_parse( true );
         }
     }
@@ -638,6 +639,7 @@ bool ICommand::apply_why(Json_DataType &json, std::shared_ptr<Twhy>& value) {
  */
 void ICommand::clear(void) {
     set_flag_parse(false);
+    _payload_.clear();
 
     _who_.reset();
     _when_.reset();

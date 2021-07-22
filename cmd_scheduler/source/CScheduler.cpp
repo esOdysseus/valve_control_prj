@@ -1,5 +1,5 @@
 #include <CScheduler.h>
-
+#include <Common.h>
 #include <logger.h>
 
 using namespace std::placeholders;
@@ -93,6 +93,35 @@ void CScheduler::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
         }
 
         push_cmd( cmd );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void CScheduler::send_command( const std::string& peer_app, const std::string& peer_pvd, 
+                               const std::string& json_data ) {
+    try {
+        unsigned long msg_id = 0;
+        alias::CAlias peer(peer_app, peer_pvd);
+        LOGI("Send request message to peer(%s/%s).", peer.app_path.data(), peer.pvd_id.data());
+
+        {
+            // we need lock for NOW-DB consistency-timing.
+
+            // Trig peer to do activity according to a json-data. (send json-data to peer)
+            //      We will get msg-id from MCommunicator->request()
+            //      If msg-id == 0, then try again sending it with random wait. (Max retry 3 times.)
+            msg_id = _m_comm_mng_->request( peer, json_data );
+
+            // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
+            // But msg-id == 0, then append record to DataBase(Now-DB) with state == FAIL & msg-id.
+
+            // we need unlock for NOW-DB consistency-timing.
+        }
+
+        // Remove a record that is sent to peer from DataBase(Future-DB).
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -213,20 +242,45 @@ int CScheduler::handle_rx_cmd(void) {
     while(_m_is_continue_.load()) {
         try {
             auto rcmd = pop_cmd();      // Blocking 
+            if( rcmd.get() == NULL ) {
+                throw std::runtime_error("pop_cmd() is invalid operation.");
+            }
+
+            std::string app_path = rcmd->who().get_app();
+            std::string pvd_id = rcmd->who().get_pvd();
+            auto when = rcmd->when();
+            std::string t_when = when.get_type();
 
             // Display 6-principle
+            LOGD("who=%s/%s", app_path.data(), pvd_id.data());
+            LOGD("when=%s", t_when.data());
+            LOGD("where=%s", rcmd->where().get_type().data());
+            LOGD("what=%s_%d", rcmd->what().get_type().data(), rcmd->what().get_which());
+            LOGD("how=%s", rcmd->how().get_method().data());
+
+            // Check whether CMD is completed Task-Pair case, or not.
+            // If CMD is in-completed Task-Pair case, then throw Exception.
+            ;   // TODO
 
             // If "when" is relative-time or absolute-time is under now + 5 seconds, (Not "period when")
             // Then trigger peer to do activity by the CMD immediatlly.
+            if( t_when == principle::CWhen::TYPE_ONECE || t_when == principle::CWhen::TYPE_SPECIAL_TIME ) {
+                double cur_time = time_pkg::CTime::get<double>();
 
-            // Check whether CMD is completed Task-Pair case, or not.
-
-            // If CMD is in-completed Task-Pair case, then throw Exception.
+                if( when.get_start_time() <= (cur_time + 5.0) ) {
+                    send_command( app_path, pvd_id, rcmd->get_payload() );
+                    continue;
+                }
+            }
 
             // Classfy which When-info of CMD is EventBase-type or PeriodBase-type.
-
             // Store json-data of body in CMD to Database(Future-DB) according to type-info of "when" in CMD.
-
+            if( t_when == principle::CWhen::TYPE_ROUTINE_DAY || t_when == principle::CWhen::TYPE_ROUTINE_WEEK ) {
+                _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, rcmd);
+            }
+            else {
+                _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT, rcmd);
+            }
         }
         catch (const std::exception &e) {
             LOGERR("%s", e.what());
@@ -240,22 +294,32 @@ int CScheduler::handle_rx_cmd(void) {
 int CScheduler::handle_tx_cmd(void) {
     while(_m_is_continue_.load()) {
         try {
-            // Load json-dataes from DataBase(Future-DB) if "when" of CMD is under now + 5 seconds.
-            //      We have to load json-data per tables. (EventBase/PeriodBase)
-            //      When we load json-data from PeriodBase tables, We must convert "period when" to "one-time when".
+            Tdb::TVrecord records;
+            Tdb& db_ref = _m_db_;
+            double cur_time = time_pkg::CTime::get<double>();
+            Tdb::TFPcond lamda_make_condition = [&cur_time](std::string kwho, std::string kwhen, 
+                                                    std::string kwhere, std::string kwhat, 
+                                                    std::string khow, std::string kuuid) -> std::string {
+                // Load records from DataBase(Future-DB) if "when" is under now + 5 seconds.
+                return (kwhen + " <= " + std::to_string(cur_time + 5.0) + " ORDER BY " + kwhen + " ASC");
+            };
+            Tdb::TFPconvert lamda_convertor = [&db_ref](Tdb::Ttype db_type, Tdb::Trecord& record) mutable -> void {
+                // When we load json-data from PeriodBase tables, We must convert "period when" to "specific when".
+                db_ref.convert_record_to_event(db_type, record);
+            };
 
-            // we need lock for NOW-DB consistency-timing.
+            // We have to load json-data per tables. (EventBase/PeriodBase)
+            _m_db_.get_records(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT,  lamda_make_condition, nullptr, records );
+            _m_db_.get_records(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, lamda_make_condition, lamda_convertor, records );
 
-            // Trig peer to do activity according to a json-data. (send json-data to peer)
-            //      We will get msg-id from MCommunicator->request()
-            //      If msg-id == 0, then try again sending it with random wait. (Max retry 3 times.)
-
-            // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
-            // But msg-id == 0, then append record to DataBase(Now-DB) with state == FAIL & msg-id.
-
-            // we need unlock for NOW-DB consistency-timing.
-
-            // Remove a record that is sent to peer from DataBase(Future-DB).
+            // send command-msg to peer.
+            for( auto itr=records.begin(); itr!=records.end(); itr++ ) {
+                std::shared_ptr<Tdb::Trecord> record = *itr;
+                auto peer = Tdb::get_who(*record);
+                auto payload = Tdb::get_payload(*record);
+                
+                send_command(peer->app_path, peer->pvd_id, payload);
+            }
 
             // wait 5 seconds
             std::this_thread::sleep_for(std::chrono::seconds(5));

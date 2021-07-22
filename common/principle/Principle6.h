@@ -50,6 +50,11 @@ private:
  */
 class CWhen {
 public:
+    static constexpr const char*    TYPE_ONECE = "one-time";
+    static constexpr const char*    TYPE_ROUTINE_WEEK = "routine.week";
+    static constexpr const char*    TYPE_ROUTINE_DAY = "routine.day";
+    static constexpr const char*    TYPE_SPECIAL_TIME = "specific";
+
     static constexpr const double   LATENCY_NULL        = -1.0;
     static constexpr const char*    WEEK_NULL_STR       = "none";
     static constexpr const uint32_t PERIOD_NULL         = 0;

@@ -47,10 +47,11 @@ INCLUDEPATH += \
 
 
 SOURCES += \
-    $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)   \
-    $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp)
+    $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp) \
+    $$files($$_PRO_FILE_PWD_/source/*.cpp)
+    
 
 
 # for installation.

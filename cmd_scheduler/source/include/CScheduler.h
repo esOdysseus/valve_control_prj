@@ -22,6 +22,9 @@ public:
     static const std::string PVD_COMMANDER;
     static const std::string PVD_DEBUGGER;
 
+private:
+    using Tdb = db::CDBhandler;
+
 public:
     static std::shared_ptr<CScheduler> get_instance( void );
 
@@ -45,6 +48,9 @@ private:
 
     void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
 
+    void send_command( const std::string& peer_app, const std::string& peer_pvd, 
+                       const std::string& json_data );
+
     void push_cmd( std::shared_ptr<cmd::ICommand>& cmd );
 
     std::shared_ptr<cmd::ICommand> pop_cmd( void );     // Blocking function.
@@ -61,7 +67,7 @@ private:
 private:
     std::shared_ptr<comm::MCommunicator>  _m_comm_mng_;
 
-    db::CDBhandler _m_db_;
+    Tdb _m_db_;
 
     /* Thread Routin variables */
     std::atomic<bool> _m_is_continue_;

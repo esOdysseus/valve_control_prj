@@ -78,7 +78,7 @@ void MCommunicator::start( void ) {
 }
 
 /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
-unsigned long MCommunicator::request( std::string peer, std::string json_cmd, bool require_resp ) {
+unsigned long MCommunicator::request( const alias::CAlias& peer, const std::string& json_cmd, bool require_resp ) {
     unsigned long msg_id = 0;
 
     try {

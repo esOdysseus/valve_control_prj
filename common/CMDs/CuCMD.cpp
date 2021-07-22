@@ -106,6 +106,7 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
             }
 
             // mark receive-time of this packet using my-system time.
+            _payload_ = std::string(payload);
             set_flag_parse( true );
         }
     }

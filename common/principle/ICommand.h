@@ -34,7 +34,7 @@
         }
     },
     'where': {
-        'type': 'string',           // valid-values : [ 'center.gps', 'unknown' ]
+        'type': 'string',           // valid-values : [ 'center.gps', 'unknown', 'dont.care' ]
         'gps': {                    // center.gps일때, 장소의 중심 좌표만 기록한다.
             'long': 'double',
             'lat': 'double'
@@ -116,6 +116,8 @@ public:
 
     double get_rcv_time(void) const { return _rcv_time_; }
 
+    const std::string& get_payload(void) const { return _payload_; }
+
     // setter
     void set_when( std::string type, double start_time, 
                                      Twhen::TEweek week = Twhen::TEweek::E_WEEK_NONE, 
@@ -194,6 +196,8 @@ protected:
     std::shared_ptr<Thow> _how_;
 
     std::shared_ptr<Twhy> _why_;
+
+    std::string _payload_;      // json-data of payload
 
 private:
     // Data-Structure for Encoded packet.

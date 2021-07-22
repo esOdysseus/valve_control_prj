@@ -6,10 +6,10 @@
 
 namespace principle {
 
-static constexpr const char*  TYPE_ONECE = "one-time";
-static constexpr const char*  TYPE_ROUTINE_WEEK = "routine.week";
-static constexpr const char*  TYPE_ROUTINE_DAY = "routine.day";
-static constexpr const char*  TYPE_SPECIAL_TIME = "specific";
+constexpr const char*  CWhen::TYPE_ONECE;
+constexpr const char*  CWhen::TYPE_ROUTINE_WEEK;
+constexpr const char*  CWhen::TYPE_ROUTINE_DAY;
+constexpr const char*  CWhen::TYPE_SPECIAL_TIME;
 
 constexpr const double   CWhen::LATENCY_NULL;
 constexpr const char*    CWhen::WEEK_NULL_STR;
