@@ -15,15 +15,39 @@ namespace db {
 class CDBhandler {
 public:
     using Trecord = db_pkg::CDBsqlite::Trecord;
-    using TVrecord = std::vector<std::shared_ptr<Trecord>>;
+    using TVrecord = db_pkg::CDBsqlite::TVrecord;
     using Ttype = enum class enum_db_type: uint8_t { ENUM_FUTURE=1, ENUM_NOW=2, ENUM_PAST=3 };
+    using Tkey = enum class enum_key_type: uint16_t {
+        ENUM_MSG_ID=1,
+        ENUM_STATE=2,
+        ENUM_PERIOD=3,
+        ENUM_PERIOD_TYPE=4,
+        ENUM_FIRSTWHEN=5,
+        ENUM_WHEN_TEXT=6,
+
+        ENUM_ID,
+        ENUM_UUID,
+        ENUM_WHO,
+        ENUM_WHEN,
+        ENUM_WHERE,
+        ENUM_WHAT,
+        ENUM_HOW,
+        ENUM_PAYLOAD
+    };
 
     // Function Pointer type.
     using TFPselect = db_pkg::CDBsqlite::TCBselect;
     using TFPcond = std::function<std::string (std::string /*key who*/, std::string /*key when*/, 
                                                std::string /*key where*/, std::string /*key what*/, 
-                                               std::string /*key how*/, std::string /*key uuid*/)>;
-    using TFPconvert = std::function<void (Ttype /*db_type*/, Trecord& /*record*/)>;
+                                               std::string /*key how*/, std::string /*key uuid*/,
+                                               std::map<Tkey, std::string>& /*Option keys*/)>;
+    using TFPconvert = std::function<void (Ttype /*db_type*/, Trecord& /*record*/, std::string& /*payload*/)>;
+
+private:
+    using TRecordHandler = std::function<std::string(std::shared_ptr<cmd::ICommand> /*cmd*/)>;
+    using TCondHandler = std::function<std::string(TFPcond&)>;
+    using TMrHandler = std::map<std::string /*table-name*/, TRecordHandler>;
+    using TMcHandler = std::map<std::string /*table-name*/, TCondHandler>;
 
 public:
     CDBhandler( void );
@@ -32,11 +56,12 @@ public:
 
     void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd);
     
-    bool convert_record_to_event(Ttype db_type, Trecord& record);
+    bool convert_record_to_event(Ttype db_type, Trecord& record, double when);
 
     // getter
-    void get_records(Ttype db_type, const char* table_name, 
-                     TFPcond& conditioner, TFPconvert convertor, TVrecord& records);
+    std::shared_ptr<TVrecord> get_records(Ttype db_type, const char* table_name, 
+                                          TFPcond& conditioner, TFPconvert convertor, 
+                                          std::shared_ptr<TVrecord> records=std::shared_ptr<TVrecord>());
 
     static std::shared_ptr<alias::CAlias> get_who(const Trecord& record);
 
@@ -48,7 +73,11 @@ private:
     CDBhandler(CDBhandler&&) = delete;                  // move constructor
     CDBhandler& operator=(CDBhandler&&) = delete;       // move operator
 
-    void clear( void );
+    static std::string get_record_data( const Trecord& record, const std::string key );
+
+    std::shared_ptr<db_pkg::CDBsqlite>& get_db_instance( Ttype db_type );
+
+    void regist_handlers_4_context_maker(void);
 
 public:
     #define TABLE_EVENT     "EventBase"
@@ -58,47 +87,70 @@ public:
 
 private:
     /* DB related variables. */
-    db_pkg::CDBsqlite _m_db_future_;
-    db_pkg::CDBsqlite _m_db_now_;
-    db_pkg::CDBsqlite _m_db_past_;
+    std::map<Ttype, std::shared_ptr<db_pkg::CDBsqlite>> _mm_db_;
+
+    std::map<Ttype, TMrHandler>  _mm_make_context_4ins_;
+
+    std::map<Ttype, TMcHandler> _mm_make_context_4con_;
+
+    static const std::map<Ttype, std::map<Tkey, std::string>> _gm_key_names_;
     
+    // define DB-path
     static constexpr const char * DB_NAME_FUTURE = "db_future.db";
     static constexpr const char * DB_NAME_NOW = "db_now.db";
     static constexpr const char * DB_NAME_PAST = "db_past.db";
 
+    // define KEY
+    #define KEY_ID          "id"
+    #define KEY_UUID        "uuid"
+    #define KEY_WHO         "who"
+    #define KEY_WHEN_TEXT   "when-text"
+    #define KEY_WHEN        "when-utc"
+    #define KEY_FIRSTWHEN   "when-first"
+    #define KEY_PERIOD_TYPE "period-type"
+    #define KEY_PERIOD      "period"
+    #define KEY_WHERE       "where"
+    #define KEY_WHAT        "what"
+    #define KEY_HOW         "how"
+    #define KEY_PAYLOAD     "payload"
+    #define KEY_MSG_ID      "msg_id"
+    #define KEY_STATE       "state"
+
+    // define Table-Model
     #define TMODEL_EVENT    \
-           "id          INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,   \
-            uuid        TEXT        UNIQUE                              NOT NULL,   \
-            who         TEXT                                            NOT NULL,   \
-            when        TEXT                                            NOT NULL,   \
-            when-utc    REAL                                            NOT NULL,   \
-            where       TEXT                                            NOT NULL,   \
-            what        TEXT                                            NOT NULL,   \
-            how         TEXT                                            NOT NULL,   \
-            payload     TEXT                                            NOT NULL"
+           KEY_ID        " INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,"   \
+           KEY_UUID      " TEXT        UNIQUE                              NOT NULL,"   \
+           KEY_WHO       " TEXT                                            NOT NULL,"   \
+           KEY_WHEN_TEXT " TEXT                                            NOT NULL,"   \
+           KEY_WHEN      " REAL                                            NOT NULL,"   \
+           KEY_WHERE     " TEXT                                            NOT NULL,"   \
+           KEY_WHAT      " TEXT                                            NOT NULL,"   \
+           KEY_HOW       " TEXT                                            NOT NULL,"   \
+           KEY_PAYLOAD   " TEXT                                            NOT NULL"
+
     #define TMODEL_PERIOD   \
-           "id          INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,   \
-            uuid        TEXT        UNIQUE                              NOT NULL,   \
-            who         TEXT                                            NOT NULL,   \
-            period-type TEXT                                            NOT NULL,   \
-            period      INTEGER                                         NOT NULL,   \
-            firsttime   TEXT                                            NOT NULL,   \
-            next-utc    REAL                                            NOT NULL,   \
-            where       TEXT                                            NOT NULL,   \
-            what        TEXT                                            NOT NULL,   \
-            how         TEXT                                            NOT NULL,   \
-            payload     TEXT                                            NOT NULL"
+           KEY_ID           " INTEGER     PRIMARY KEY     AUTOINCREMENT       NOT NULL,"   \
+           KEY_UUID         " TEXT        UNIQUE                              NOT NULL,"   \
+           KEY_WHO          " TEXT                                            NOT NULL,"   \
+           KEY_PERIOD_TYPE  " TEXT                                            NOT NULL,"   \
+           KEY_PERIOD       " INTEGER                                         NOT NULL,"   \
+           KEY_FIRSTWHEN    " TEXT                                            NOT NULL,"   \
+           KEY_WHEN         " REAL                                            NOT NULL,"   \
+           KEY_WHERE        " TEXT                                            NOT NULL,"   \
+           KEY_WHAT         " TEXT                                            NOT NULL,"   \
+           KEY_HOW          " TEXT                                            NOT NULL,"   \
+           KEY_PAYLOAD      " TEXT                                            NOT NULL"
 
     static constexpr const char * TABLE_MODEL_FUTURE[] = {
         /***
          * who      : alias of peer.    Ex) APP-name/PVD-name
-         * when     : Data + Time       Ex) 2021-05-13 13:50:52
+         * when-text: Data + Time       Ex) 2021-05-13 13:50:52
          * when-utc : UTC time
          * where    : position of Dynamic-who.
          * what     : target            Ex) valve-01
          * how      : operation         Ex) open
          * payload  : json-data
-         * uuid     : who@when@where@what@how for uniqueness as ID.
+         * uuid     : who@when-text@where@what@how for uniqueness as ID.
          ***/
         TABLE_EVENT "(" \
             TMODEL_EVENT    \
@@ -107,13 +159,13 @@ private:
          * who          : alias of peer.                            Ex) APP-name/PVD-name
          * period-type  : type for value of period column.          Valid-Values)   HOUR, DAY, MONTH, YEAR
          * period       : duration for period-execution.            [Unit: day]
-         * firsttime    : Data + Time [first-time to execute]       Ex) 2021-05-13 13:50:52
-         * next-utc     : UTC time [latest-time to execute]
+         * when-first   : Data + Time [first-time to execute]       Ex) 2021-05-13 13:50:52
+         * when-utc     : UTC time [next-time to execute]
          * where        : position of Dynamic-who.
          * what         : target                                    Ex) valve-01
          * how          : operation                                 Ex) open
          * payload      : json-data
-         * uuid         : who@firsttime@where@what@how for uniqueness as ID.
+         * uuid         : who@when-first@where@what@how for uniqueness as ID.
          ***/
         TABLE_PERIOD "(" \
             TMODEL_PERIOD \
@@ -124,7 +176,7 @@ private:
     static constexpr const char * TABLE_MODEL_NOW[] = {
         /***
          * who      : alias of peer.    Ex) APP-name/PVD-name
-         * when     : Data + Time       Ex) 2021-05-13 13:50:52
+         * when-text: Data + Time       Ex) 2021-05-13 13:50:52
          * when-utc : UTC time
          * where    : position of Dynamic-who.
          * what     : target            Ex) valve-01
@@ -132,12 +184,12 @@ private:
          * payload  : json-data
          * state    : state of CMD operation    Valid-Values) TRIGGERED, RCV-ACK, STARTED, DONE, FAIL
          * msg-id   : ID of req-msg that is sent.
-         * uuid     : who@when@where@what@how for uniqueness as ID.
+         * uuid     : who@when-text@where@what@how for uniqueness as ID.
          ***/
         TABLE_EVENT "(" \
             TMODEL_EVENT ","    \
-            "msg-id      INTEGER                                         NOT NULL,"   \
-            "state       TEXT                                            NOT NULL"    \
+            KEY_MSG_ID   " INTEGER                                         NOT NULL,"   \
+            KEY_STATE    " TEXT                                            NOT NULL"    \
         ")",
         NULL
     };
@@ -145,7 +197,7 @@ private:
     static constexpr const char * TABLE_MODEL_PAST[] = {
         /***
          * who      : alias of peer.    Ex) APP-name/PVD-name
-         * when     : Data + Time       Ex) 2021-05-13 13:50:52
+         * when-text: Data + Time       Ex) 2021-05-13 13:50:52
          * when-utc : UTC time
          * where    : position of Dynamic-who.
          * what     : target            Ex) valve-01
@@ -153,12 +205,12 @@ private:
          * payload  : json-data
          * state    : state of CMD operation    Valid-Values) TRIGGERED, RCV-ACK, STARTED, DONE, FAIL
          * msg-id   : ID of req-msg that is sent.
-         * uuid     : who@when@where@what@how for uniqueness as ID.
+         * uuid     : who@when-text@where@what@how for uniqueness as ID.
          ***/
         TABLE_EVENT "(" \
             TMODEL_EVENT ","    \
-            "msg-id      INTEGER                                         NOT NULL,"   \
-            "state       TEXT                                            NOT NULL"    \
+            KEY_MSG_ID   " INTEGER                                         NOT NULL,"   \
+            KEY_STATE    " TEXT                                            NOT NULL"    \
         ")",
         NULL
     };

@@ -1,5 +1,4 @@
 #include <CScheduler.h>
-#include <Common.h>
 #include <logger.h>
 
 using namespace std::placeholders;
@@ -103,12 +102,23 @@ void CScheduler::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
 void CScheduler::send_command( const std::string& peer_app, const std::string& peer_pvd, 
                                const std::string& json_data ) {
     try {
-        unsigned long msg_id = 0;
         alias::CAlias peer(peer_app, peer_pvd);
+        send_command( peer, json_data );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void CScheduler::send_command( alias::CAlias& peer, const std::string& json_data ) {
+    try {
+        unsigned long msg_id = 0;
         LOGI("Send request message to peer(%s/%s).", peer.app_path.data(), peer.pvd_id.data());
 
         {
             // we need lock for NOW-DB consistency-timing.
+            ; // TODO
 
             // Trig peer to do activity according to a json-data. (send json-data to peer)
             //      We will get msg-id from MCommunicator->request()
@@ -188,6 +198,15 @@ std::shared_ptr<cmd::ICommand> CScheduler::pop_cmd( void ) {    // Blocking
     return cmd;
 }
 
+void CScheduler::convert_json_to_event( std::string& payload, double& when ) {
+    try {
+        ;   // TODO
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
 
 /****
  * Thread related functions
@@ -294,31 +313,33 @@ int CScheduler::handle_rx_cmd(void) {
 int CScheduler::handle_tx_cmd(void) {
     while(_m_is_continue_.load()) {
         try {
-            Tdb::TVrecord records;
             Tdb& db_ref = _m_db_;
             double cur_time = time_pkg::CTime::get<double>();
             Tdb::TFPcond lamda_make_condition = [&cur_time](std::string kwho, std::string kwhen, 
                                                     std::string kwhere, std::string kwhat, 
-                                                    std::string khow, std::string kuuid) -> std::string {
+                                                    std::string khow, std::string kuuid,
+                                                    std::map<Tdb::Tkey, std::string>& kopt) -> std::string {
                 // Load records from DataBase(Future-DB) if "when" is under now + 5 seconds.
                 return (kwhen + " <= " + std::to_string(cur_time + 5.0) + " ORDER BY " + kwhen + " ASC");
             };
-            Tdb::TFPconvert lamda_convertor = [&db_ref](Tdb::Ttype db_type, Tdb::Trecord& record) mutable -> void {
+            Tdb::TFPconvert lamda_convertor = [&](Tdb::Ttype db_type, Tdb::Trecord& record, std::string& payload) -> void {
                 // When we load json-data from PeriodBase tables, We must convert "period when" to "specific when".
-                db_ref.convert_record_to_event(db_type, record);
+                double when = 0.0;
+                convert_json_to_event( payload, when );
+                db_ref.convert_record_to_event(db_type, record, when);
             };
 
             // We have to load json-data per tables. (EventBase/PeriodBase)
-            _m_db_.get_records(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT,  lamda_make_condition, nullptr, records );
+            auto records = _m_db_.get_records(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT,  lamda_make_condition, nullptr );
             _m_db_.get_records(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, lamda_make_condition, lamda_convertor, records );
 
             // send command-msg to peer.
-            for( auto itr=records.begin(); itr!=records.end(); itr++ ) {
+            for( auto itr=records->begin(); itr!=records->end(); itr++ ) {
                 std::shared_ptr<Tdb::Trecord> record = *itr;
                 auto peer = Tdb::get_who(*record);
                 auto payload = Tdb::get_payload(*record);
                 
-                send_command(peer->app_path, peer->pvd_id, payload);
+                send_command(*peer, payload);
             }
 
             // wait 5 seconds

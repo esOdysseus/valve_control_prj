@@ -9,6 +9,7 @@
 #include <queue>
 #include <condition_variable>
 
+#include <Common.h>
 #include <MCommunicator.h>
 #include <ICommand.h>
 #include <CDBhandler.h>
@@ -51,9 +52,13 @@ private:
     void send_command( const std::string& peer_app, const std::string& peer_pvd, 
                        const std::string& json_data );
 
+    void send_command( alias::CAlias& peer, const std::string& json_data );
+
     void push_cmd( std::shared_ptr<cmd::ICommand>& cmd );
 
     std::shared_ptr<cmd::ICommand> pop_cmd( void );     // Blocking function.
+
+    void convert_json_to_event( std::string& payload, double& when );
 
     /** Thread releated Functions. */
     void create_threads(void);

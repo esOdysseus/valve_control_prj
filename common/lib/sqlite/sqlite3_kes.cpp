@@ -66,10 +66,10 @@ int IDBsqlite3::query_select( std::string context, TCBselect func ) {
     return execute_query( "SELECT " + context + ";", &func );         // Blocking function.
 }
 
-std::shared_ptr<std::vector<IDBsqlite3::Trecord>> IDBsqlite3::query_select( std::string context ) {
+std::shared_ptr<IDBsqlite3::TVrecord> IDBsqlite3::query_select( std::string context ) {
     try {
-        std::shared_ptr<std::vector<Trecord>> records = std::make_shared<std::vector<Trecord>>();
-        TCBselect lamda_func = [&records](Trecord& record) -> void {
+        std::shared_ptr<TVrecord> records = std::make_shared<TVrecord>();
+        TCBselect lamda_func = [&records](std::shared_ptr<Trecord>& record) -> void {
             LOGD("push record to record-vector.");
             records->push_back(record);
         };
@@ -230,12 +230,17 @@ int IDBsqlite3::callback_oncommit(TdbInst* db, const char* source, int pages) {
 };
 
 int IDBsqlite3::callback_onselect(TCBselect* pfunc, int argc, char **argv, char **azColName) {
-    Trecord record;
+    std::shared_ptr<Trecord> record;
 
     try {
+        record = std::make_shared<Trecord>();
+        if( record.get() == NULL ) {
+            throw std::runtime_error("record memory-allocation is failed.");
+        }
+
         if( pfunc != NULL ) {
             for(int i = 0; i<argc; i++) {
-                record[ azColName[i] ] = argv[i] ? argv[i] : "NULL";
+                (*record)[ azColName[i] ] = argv[i] ? argv[i] : "NULL";
             }
 
             (*pfunc)( record );     // call custom-function.

@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <string>
+#include <iostream>
 
 namespace common {
 
@@ -56,6 +57,15 @@ namespace alias {
             pvd_id = std::move(myself.pvd_id);
         }
 
+        CAlias(const std::string pvd_full_path) {
+            std::string app;
+            std::string pvd;
+            
+            clear();
+            extract_app_pvd(pvd_full_path, app, pvd);
+            set(app, pvd);
+        }
+
         CAlias(std::string app, std::string pvd) {
             clear();
             set(app, pvd);
@@ -76,7 +86,9 @@ namespace alias {
 
         // getter
         common::StateType get_state(common::E_STATE pos) {
-            assert( pos != common::E_STATE::E_NO_STATE);
+            if( pos == common::E_STATE::E_NO_STATE) {
+                throw std::invalid_argument("pos is E_NO_STATE.");
+            }
 
             std::lock_guard<std::mutex>  guard(_mtx_state_);
             return _m_state_ & pos;
@@ -94,7 +106,9 @@ namespace alias {
                 // Assumption : pos is continuous-bitmask.
                 while( ((1<<shift_cnt) & pos) == 0 ) {
                     shift_cnt++;
-                    assert( shift_cnt < (sizeof(common::StateType)*8) );
+                    if( shift_cnt >= (sizeof(common::StateType)*8) ) {
+                        throw std::logic_error("shift_cnt is overflowed.");
+                    }
                 }
 
                 std::lock_guard<std::mutex>  guard(_mtx_state_);
@@ -112,6 +126,26 @@ namespace alias {
         void set( std::string app, std::string pvd ) {
             app_path = app;
             pvd_id = pvd;
+        }
+
+        static void extract_app_pvd(const std::string& full_path, std::string& app, std::string& pvd) {
+            std::string delimiter = "/";
+            size_t pos = 0;
+
+            try {
+                pos = full_path.rfind(delimiter);
+                if( pos == std::string::npos ) {
+                    std::string err = "full_path(" + full_path + ") is invalid.";
+                    throw std::invalid_argument(err);
+                }
+
+                app = full_path.substr(0, pos);
+                pvd = full_path.substr(pos+delimiter.length(), full_path.length());
+            }
+            catch( const std::exception& e ) {
+                std::cout << "[Error] CAlias::extract_app_pvd: " << e.what() << std::endl;
+                throw e;
+            }
         }
 
     private:

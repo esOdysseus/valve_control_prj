@@ -18,7 +18,8 @@ namespace db_pkg {
 class IDBsqlite3 {
 public:
     using Trecord = std::map<std::string /*key*/, std::string /*value*/>;
-    using TCBselect = std::function<void(Trecord&)>;
+    using TCBselect = std::function<void(std::shared_ptr<Trecord>&)>;
+    using TVrecord = std::vector<std::shared_ptr<Trecord>>;
 
 protected:
     using TdbInst = sqlite3;
@@ -50,7 +51,7 @@ public:
 
     int query_select( std::string context, TCBselect func );
 
-    std::shared_ptr<std::vector<Trecord>> query_select( std::string context );
+    std::shared_ptr<TVrecord> query_select( std::string context );
 
 protected:
     virtual int cb_oncommit(const std::string& src_name, int pages) {
