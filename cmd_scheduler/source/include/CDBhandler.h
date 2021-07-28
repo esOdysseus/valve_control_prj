@@ -54,9 +54,16 @@ public:
 
     ~CDBhandler( void );
 
-    void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd);
-    
     bool convert_record_to_event(Ttype db_type, Trecord& record, double when);
+
+    std::shared_ptr<Trecord> make_base_record(std::shared_ptr<cmd::ICommand>& cmd);
+
+    // setter
+    void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd);
+
+    void remove_record(Ttype db_type, const char* table_name, const std::string uuid);
+
+    // void update_record(Ttype db_type, const char* table_name, );
 
     // getter
     std::shared_ptr<TVrecord> get_records(Ttype db_type, const char* table_name, 
@@ -66,6 +73,8 @@ public:
     static std::shared_ptr<alias::CAlias> get_who(const Trecord& record);
 
     static std::string get_payload(const Trecord& record);
+
+    static std::string get_uuid(const Trecord& record);
 
 private:
     CDBhandler(const CDBhandler&) = delete;             // copy constructor

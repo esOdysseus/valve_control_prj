@@ -50,9 +50,9 @@ private:
     void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
 
     void send_command( const std::string& peer_app, const std::string& peer_pvd, 
-                       const std::string& json_data );
+                       std::shared_ptr<Tdb::Trecord>& record );
 
-    void send_command( alias::CAlias& peer, const std::string& json_data );
+    void send_command( alias::CAlias& peer, std::shared_ptr<Tdb::Trecord>& record );
 
     void push_cmd( std::shared_ptr<cmd::ICommand>& cmd );
 

@@ -147,36 +147,36 @@ public:
 
     Twhy& why(void);
 
+    static std::string extract_version(Json_DataType &json);
+
+    static std::shared_ptr<Twho> extract_who(Json_DataType &json);
+
+    static std::shared_ptr<Twhen> extract_when(Json_DataType &json, double def_time=0.0);
+
+    static std::shared_ptr<Twhere> extract_where(Json_DataType &json);
+
+    static std::shared_ptr<Twhat> extract_what(Json_DataType &json);
+
+    static std::shared_ptr<Thow> extract_how(Json_DataType &json);
+
+    static std::shared_ptr<Twhy> extract_why(Json_DataType &json);
+
+    static bool apply_version(Json_DataType &json);
+
+    static bool apply_who(Json_DataType &json, std::shared_ptr<Twho>& value);
+
+    static bool apply_when(Json_DataType &json, std::shared_ptr<Twhen>& value);
+
+    static bool apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value);
+
+    static bool apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value);
+
+    static bool apply_how(Json_DataType &json, std::shared_ptr<Thow>& value);
+
+    static bool apply_why(Json_DataType &json, std::shared_ptr<Twhy>& value);
+    
 protected:
     void set_flag_parse( bool value, double rcv_time=0.0 );
-
-    std::string extract_version(Json_DataType &json);
-
-    std::shared_ptr<Twho> extract_who(Json_DataType &json);
-
-    std::shared_ptr<Twhen> extract_when(Json_DataType &json, double def_time=0.0);
-
-    std::shared_ptr<Twhere> extract_where(Json_DataType &json);
-
-    std::shared_ptr<Twhat> extract_what(Json_DataType &json);
-
-    std::shared_ptr<Thow> extract_how(Json_DataType &json);
-
-    std::shared_ptr<Twhy> extract_why(Json_DataType &json);
-
-    bool apply_version(Json_DataType &json);
-
-    bool apply_who(Json_DataType &json, std::shared_ptr<Twho>& value);
-
-    bool apply_when(Json_DataType &json, std::shared_ptr<Twhen>& value);
-
-    bool apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value);
-
-    bool apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value);
-
-    bool apply_how(Json_DataType &json, std::shared_ptr<Thow>& value);
-
-    bool apply_why(Json_DataType &json, std::shared_ptr<Twhy>& value);
 
 private:
     ICommand(void) = delete;

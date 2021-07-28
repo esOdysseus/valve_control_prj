@@ -1,4 +1,6 @@
 #include <CScheduler.h>
+#include <ICommand.h>
+
 #include <logger.h>
 
 using namespace std::placeholders;
@@ -100,10 +102,10 @@ void CScheduler::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
 }
 
 void CScheduler::send_command( const std::string& peer_app, const std::string& peer_pvd, 
-                               const std::string& json_data ) {
+                               std::shared_ptr<Tdb::Trecord>& record ) {
     try {
         alias::CAlias peer(peer_app, peer_pvd);
-        send_command( peer, json_data );
+        send_command( peer, record );
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -111,9 +113,10 @@ void CScheduler::send_command( const std::string& peer_app, const std::string& p
     }
 }
 
-void CScheduler::send_command( alias::CAlias& peer, const std::string& json_data ) {
+void CScheduler::send_command( alias::CAlias& peer, std::shared_ptr<Tdb::Trecord>& record ) {
     try {
         unsigned long msg_id = 0;
+        std::string payload = Tdb::get_payload(*record);
         LOGI("Send request message to peer(%s/%s).", peer.app_path.data(), peer.pvd_id.data());
 
         {
@@ -123,7 +126,7 @@ void CScheduler::send_command( alias::CAlias& peer, const std::string& json_data
             // Trig peer to do activity according to a json-data. (send json-data to peer)
             //      We will get msg-id from MCommunicator->request()
             //      If msg-id == 0, then try again sending it with random wait. (Max retry 3 times.)
-            msg_id = _m_comm_mng_->request( peer, json_data );
+            msg_id = _m_comm_mng_->request( peer, payload );
 
             // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
             // But msg-id == 0, then append record to DataBase(Now-DB) with state == FAIL & msg-id.
@@ -200,7 +203,40 @@ std::shared_ptr<cmd::ICommand> CScheduler::pop_cmd( void ) {    // Blocking
 
 void CScheduler::convert_json_to_event( std::string& payload, double& when ) {
     try {
-        ;   // TODO
+        if( payload.empty() == true ) {
+            throw std::logic_error("payload is empty. we need it.");
+        }
+
+        auto json = std::make_shared<json_mng::CMjson>();
+        LOGD("Before: payload=%s , length=%u", payload.c_str(), payload.length());
+        if( json->parse(payload.c_str(), payload.length()) != true ) {
+            throw std::runtime_error("Json Parsing is failed.");
+        }
+
+        // check version.
+        auto ver = cmd::ICommand::extract_version(json);
+        LOGI("CMD Version = %s", ver.data());
+
+        // parse "when" part in principle-6.
+        auto cwhen = cmd::ICommand::extract_when(json);
+        LOGD( "Success parse of Json buffer." );
+
+        // make specific eventual 'when'-part.
+        when = cwhen->get_start_time();
+        cwhen.reset();
+        cwhen = std::make_shared<principle::CWhen>(principle::CWhen::TYPE_SPECIAL_TIME, when);
+        if( cwhen.get() == NULL ) {
+            throw std::runtime_error("'when' memory allocation is failed.");
+        }
+
+        // apply new event-'when' to JSON-payload.
+        if( cmd::ICommand::apply_when(json, cwhen) == false ) {
+            throw std::logic_error("appling 'when'-part to json is failed.");
+        }
+
+        payload.clear();
+        payload = std::string( json->print_buf() );
+        LOGD("After : payload=%s , length=%u", payload.c_str(), payload.length());
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -287,7 +323,8 @@ int CScheduler::handle_rx_cmd(void) {
                 double cur_time = time_pkg::CTime::get<double>();
 
                 if( when.get_start_time() <= (cur_time + 5.0) ) {
-                    send_command( app_path, pvd_id, rcmd->get_payload() );
+                    auto record = _m_db_.make_base_record(rcmd);
+                    send_command( app_path, pvd_id, record );
                     continue;
                 }
             }
@@ -337,9 +374,10 @@ int CScheduler::handle_tx_cmd(void) {
             for( auto itr=records->begin(); itr!=records->end(); itr++ ) {
                 std::shared_ptr<Tdb::Trecord> record = *itr;
                 auto peer = Tdb::get_who(*record);
-                auto payload = Tdb::get_payload(*record);
                 
-                send_command(*peer, payload);
+                send_command(*peer, record);
+                // remove record from Future-DB.  (Assumption: "get_records" about Future-DB is used only in this function.)
+                _m_db_.remove_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT, Tdb::get_uuid(*record));
             }
 
             // wait 5 seconds

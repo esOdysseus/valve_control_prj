@@ -87,6 +87,93 @@ CDBhandler::~CDBhandler( void ) {
     _mm_make_context_4con_.clear();
 }
 
+bool CDBhandler::convert_record_to_event(Ttype db_type, Trecord& record, double when) {
+    bool res = false;
+
+    try {
+        std::string uuid;
+        Trecord new_record;
+        if( db_type != Ttype::ENUM_FUTURE ) {
+            std::string err = "NOT Supported DataBase Type. (" + std::to_string(static_cast<uint8_t>(db_type)) + ")";
+            throw std::out_of_range(err);
+        }
+
+        if( record.size() == 0 ) {
+            throw std::invalid_argument("record have not any keys. It's empty.");
+        }
+
+        if( when <= 0.0 ) {
+            std::string err = "'when' is invalid-value. (" + std::to_string(when) + ")";
+            throw std::invalid_argument(err);
+        }
+    
+        auto itr = _gm_key_names_.find(db_type);
+        if( itr == _gm_key_names_.end() || itr->second.size() <= 0 ) {
+            std::string err = "Not exist key_names in mapper of " + std::to_string(static_cast<uint8_t>(db_type));
+            throw std::logic_error(err);
+        }
+
+        // extract key,value only for eventbase table from record to new_record.
+        uuid = get_uuid(record);
+        record[KEY_WHEN] = std::to_string(when);
+        record[KEY_WHEN_TEXT] = time_pkg::CTime::print<double>(when, "%Y-%m-%d %T");
+        record[KEY_UUID] = uuid + "@" + record[KEY_WHEN_TEXT];
+
+        for( auto eitr=itr->second.begin(); eitr!=itr->second.end(); eitr++ ) {
+            auto kitr = record.find( eitr->second );
+            if( kitr == record.end() ) {
+                std::string err = "key(" + eitr->second + ") have to exist in record. But it's not exist.";
+                throw std::logic_error(err);
+            }
+
+            new_record[eitr->second] = kitr->second;
+        }
+
+        // update record by new_record.
+        record.clear();
+        for(auto eitr=new_record.begin(); eitr!=new_record.end(); eitr++) {
+            record[eitr->first] = eitr->second;
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+    return res;
+}
+
+std::shared_ptr<CDBhandler::Trecord> CDBhandler::make_base_record(std::shared_ptr<cmd::ICommand>& cmd) {
+    std::shared_ptr<CDBhandler::Trecord> record;
+
+    try {
+        if( cmd.get() == NULL ) {
+            throw std::invalid_argument("cmd is NULL. please check it.");
+        }
+
+        record = std::make_shared<Trecord>();
+        if( record.get() == NULL ) {
+            throw std::runtime_error("record memory-allocation is failed.");
+        }
+
+        // make base record. (It's depend on EventTable.)
+        (*record)[KEY_WHO] = cmd->who().get_app() + "/" + cmd->who().get_pvd();
+        (*record)[KEY_WHEN] = std::to_string(cmd->when().get_start_time());
+        (*record)[KEY_WHEN_TEXT] = cmd->when().get_date() + " " + cmd->when().get_time();
+        (*record)[KEY_WHERE] = cmd->where().get_type();
+        (*record)[KEY_WHAT] = cmd->what().get_type() + " " + std::to_string( cmd->what().get_which() );
+        (*record)[KEY_HOW] = cmd->how().get_method();
+        (*record)[KEY_PAYLOAD] = cmd->get_payload();
+        (*record)[KEY_UUID] = (*record)[KEY_WHO] + "@" + (*record)[KEY_WHEN_TEXT] + "@" + (*record)[KEY_WHERE] + "@" + (*record)[KEY_WHAT] + "@" + (*record)[KEY_HOW];
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return record;
+}
+
+/// Setter
 void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd) {
     try {
         std::string table;
@@ -123,58 +210,36 @@ void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::share
     }
 }
 
-bool CDBhandler::convert_record_to_event(Ttype db_type, Trecord& record, double when) {
-    bool res = false;
-
+void CDBhandler::remove_record(Ttype db_type, const char* table_name, const std::string uuid) {
     try {
-        Trecord new_record;
-        if( db_type != Ttype::ENUM_FUTURE ) {
-            std::string err = "NOT Supported DataBase Type. (" + std::to_string(static_cast<uint8_t>(db_type)) + ")";
-            throw std::out_of_range(err);
+        std::string table;
+        std::string context;
+
+        if( table_name == NULL ) {
+            throw std::invalid_argument("Table Name is NULL.");
         }
 
-        if( record.size() == 0 ) {
-            throw std::invalid_argument("record have not any keys. It's empty.");
+        if( uuid.empty() == true ) {
+            throw std::invalid_argument("uuid is NULL");
         }
 
-        if( when <= 0.0 ) {
-            std::string err = "'when' is invalid-value. (" + std::to_string(when) + ")";
-            throw std::invalid_argument(err);
-        }
-    
-        auto itr = _gm_key_names_.find(db_type);
-        if( itr == _gm_key_names_.end() || itr->second.size() <= 0 ) {
-            std::string err = "Not exist key_names in mapper of " + std::to_string(static_cast<uint8_t>(db_type));
-            throw std::logic_error(err);
-        }
+        table = std::string(table_name);
+        auto& db_inst = get_db_instance(db_type);
+        context = table + " WHERE " KEY_UUID " = '" + uuid + "'";
 
-        // extract key,value only for eventbase table from record to new_record.
-        record[KEY_WHEN] = std::to_string(when);
-        record[KEY_WHEN_TEXT] = time_pkg::CTime::print<double>(when, "%Y-%m-%d %T");
-
-        for( auto eitr=itr->second.begin(); eitr!=itr->second.end(); eitr++ ) {
-            auto kitr = record.find( eitr->second );
-            if( kitr == record.end() ) {
-                std::string err = "key(" + eitr->second + ") have to exist in record. But it's not exist.";
-                throw std::logic_error(err);
-            }
-
-            new_record[eitr->second] = kitr->second;
-        }
-
-        // update record by new_record.
-        record.clear();
-        for(auto eitr=new_record.begin(); eitr!=new_record.end(); eitr++) {
-            record[eitr->first] = eitr->second;
+        // If exist context in DB, then remove it.
+        if( db_inst->query_delete( context ) != SQLITE_OK ) {
+            std::string err = "query_delete is failed. (DELETE FROM " + context + ")";
+            throw std::runtime_error(err);
         }
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
         throw e;
     }
-    return res;
 }
 
+/// Getter
 std::shared_ptr<CDBhandler::TVrecord> CDBhandler::get_records(Ttype db_type, const char* table_name, 
                                                               TFPcond& conditioner, TFPconvert convertor, 
                                                               std::shared_ptr<TVrecord> records) {
@@ -266,6 +331,16 @@ std::string CDBhandler::get_payload(const Trecord& record) {
     }
 }
 
+std::string CDBhandler::get_uuid(const Trecord& record) {
+    try {
+        return get_record_data(record, KEY_UUID);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
 
 /*********************************
  * Definition of Private Function.
@@ -306,27 +381,19 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
     try {
         /* Regist Insert-Parameter-Context maker */
         TRecordHandler lamda_future_event = [this](std::shared_ptr<cmd::ICommand> cmd) -> std::string {
-            std::string uuid;
             std::string context = "(" KEYS_FUTURE_EVENT ") VALUES(";
 
             try {
-                std::string who = cmd->who().get_app() + "/" + cmd->who().get_pvd();
-                double when = cmd->when().get_start_time();
-                std::string when_text = cmd->when().get_date() + " " + cmd->when().get_time();
-                std::string where = cmd->where().get_type();
-                std::string what = cmd->what().get_type() + " " + std::to_string( cmd->what().get_which() );
-                std::string how = cmd->how().get_method();
-                std::string payload = cmd->get_payload();
+                auto record = make_base_record(cmd);
 
-                uuid = who + "@" + when_text + "@" + where + "@" + what + "@" + how;
-                context = context + "'" + uuid + "',"  \
-                                  + "'" + who + "',"  \
-                                  + "'" + when_text + "',"  \
-                                  + std::to_string(when) + ","  \
-                                  + "'" + where + "',"  \
-                                  + "'" + what + "',"  \
-                                  + "'" + how + "',"  \
-                                  + "'" + payload  \
+                context = context + "'" + (*record)[KEY_UUID] + "',"  \
+                                  + "'" + (*record)[KEY_WHO] + "',"  \
+                                  + "'" + (*record)[KEY_WHEN_TEXT] + "',"  \
+                                  + (*record)[KEY_WHEN] + ","  \
+                                  + "'" + (*record)[KEY_WHERE] + "',"  \
+                                  + "'" + (*record)[KEY_WHAT] + "',"  \
+                                  + "'" + (*record)[KEY_HOW] + "',"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
                                   + ")";
             }
             catch( const std::exception& e ) {
@@ -338,19 +405,12 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
 
 
         TRecordHandler lamda_future_period = [this](std::shared_ptr<cmd::ICommand> cmd) -> std::string {
-            std::string uuid;
             std::string context = "(" KEYS_FUTURE_PERIOD ") VALUES(";
 
             try {
-                std::string who = cmd->who().get_app() + "/" + cmd->who().get_pvd();
-                double when = cmd->when().get_start_time();
-                std::string firstwhen = cmd->when().get_date() + " " + cmd->when().get_time();
-                std::string where = cmd->where().get_type();
-                std::string what = cmd->what().get_type() + " " + std::to_string( cmd->what().get_which() );
-                std::string how = cmd->how().get_method();
-                std::string payload = cmd->get_payload();
-
                 uint32_t period;
+                auto record = make_base_record(cmd);
+
                 std::string period_type = cmd->when().get_type();
                 if( period_type != principle::CWhen::TYPE_ROUTINE_DAY && period_type != principle::CWhen::TYPE_ROUTINE_WEEK ) {
                     throw std::logic_error("This CMD have not Period-type WHEN.");
@@ -367,17 +427,16 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
                     throw std::out_of_range(err);
                 }
 
-                uuid = who + "@" + firstwhen + "@" + where + "@" + what + "@" + how;
-                context = context + "'" + uuid + "',"  \
-                                  + "'" + who + "',"  \
+                context = context + "'" + (*record)[KEY_UUID] + "',"  \
+                                  + "'" + (*record)[KEY_WHO] + "',"  \
                                   + "'" + period_type + "',"  \
                                   + std::to_string(period) + ","  \
-                                  + "'" + firstwhen + "',"  \
-                                  + std::to_string(when) + ","  \
-                                  + "'" + where + "',"  \
-                                  + "'" + what + "',"  \
-                                  + "'" + how + "',"  \
-                                  + "'" + payload  \
+                                  + "'" + (*record)[KEY_WHEN_TEXT] + "',"  \
+                                  + (*record)[KEY_WHEN] + ","  \
+                                  + "'" + (*record)[KEY_WHERE] + "',"  \
+                                  + "'" + (*record)[KEY_WHAT] + "',"  \
+                                  + "'" + (*record)[KEY_HOW] + "',"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
                                   + ")";
             }
             catch( const std::exception& e ) {

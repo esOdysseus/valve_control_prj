@@ -350,7 +350,7 @@ std::string ICommand::extract_version(Json_DataType &json) {
 }
 
 bool ICommand::apply_version(Json_DataType &json) {
-    return json->set_member(JKEY_VERSION, version());
+    return json->set_member(JKEY_VERSION, std::string(VERSION) );
 }
 
 std::shared_ptr<ICommand::Twho> ICommand::extract_who(Json_DataType &json) {
