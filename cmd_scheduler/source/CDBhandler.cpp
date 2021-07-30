@@ -27,6 +27,23 @@ constexpr const char * CDBhandler::TABLE_MODEL_PAST[];
 #define KEYS_NOW_EVENT      KEYS_FUTURE_EVENT","KEY_MSG_ID","KEY_STATE
 #define KEYS_PAST_EVENT     KEYS_FUTURE_EVENT","KEY_MSG_ID","KEY_STATE
 
+const std::map<CDBhandler::Tkey, std::string> CDBhandler::_gm_key_names_all_ = {
+    {CDBhandler::Tkey::ENUM_ID, KEY_ID},
+    {CDBhandler::Tkey::ENUM_UUID, KEY_UUID},
+    {CDBhandler::Tkey::ENUM_WHO, KEY_WHO},
+    {CDBhandler::Tkey::ENUM_WHEN_TEXT, KEY_WHEN_TEXT},
+    {CDBhandler::Tkey::ENUM_WHEN, KEY_WHEN},
+    {CDBhandler::Tkey::ENUM_WHERE, KEY_WHERE},
+    {CDBhandler::Tkey::ENUM_WHAT, KEY_WHAT},
+    {CDBhandler::Tkey::ENUM_HOW, KEY_HOW},
+    {CDBhandler::Tkey::ENUM_PAYLOAD, KEY_PAYLOAD},
+
+    {CDBhandler::Tkey::ENUM_FIRSTWHEN, KEY_FIRSTWHEN},
+    {CDBhandler::Tkey::ENUM_MSG_ID, KEY_MSG_ID},
+    {CDBhandler::Tkey::ENUM_PERIOD, KEY_PERIOD},
+    {CDBhandler::Tkey::ENUM_PERIOD_TYPE, KEY_PERIOD_TYPE},
+    {CDBhandler::Tkey::ENUM_STATE, KEY_STATE}
+};
 
 const std::map<CDBhandler::Ttype, std::map<CDBhandler::Tkey, std::string>> CDBhandler::_gm_key_names_ = {
     {CDBhandler::Ttype::ENUM_FUTURE, {
@@ -174,6 +191,42 @@ std::shared_ptr<CDBhandler::Trecord> CDBhandler::make_base_record(std::shared_pt
 }
 
 /// Setter
+void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::shared_ptr<Trecord>& record) {
+    try {
+        std::string table;
+        std::string context;
+
+        if( table_name == NULL ) {
+            throw std::invalid_argument("Table Name is NULL.");
+        }
+
+        if( record.get() == NULL ) {
+            throw std::invalid_argument("Record is NULL");
+        }
+
+        table = std::string(table_name);
+        auto& db_inst = get_db_instance(db_type);
+        auto itr = _mm_make_context_4ins_.find(db_type);
+        if( itr == _mm_make_context_4ins_.end() ) {
+            std::string err = "db_type(" + std::to_string(static_cast<uint8_t>(db_type)) + ") is not exist in _mm_make_context_4ins_";
+            throw std::logic_error(err);
+        }
+
+        auto itr_maker = itr->second.find(table);
+        if( itr_maker == itr->second.end() ) {
+            std::string err = "table(" + table + ") is not exist in _mm_make_context_4ins_";
+            throw std::logic_error(err);
+        }
+
+        context = itr_maker->second(nullptr, record);
+        db_inst->query_insert(table + context);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
 void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd) {
     try {
         std::string table;
@@ -201,7 +254,7 @@ void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::share
             throw std::logic_error(err);
         }
 
-        context = itr_maker->second(cmd);
+        context = itr_maker->second(cmd, nullptr);
         db_inst->query_insert(table + context);
     }
     catch( const std::exception& e ) {
@@ -380,11 +433,30 @@ std::shared_ptr<db_pkg::CDBsqlite>& CDBhandler::get_db_instance( Ttype db_type )
 void CDBhandler::regist_handlers_4_context_maker(void) {
     try {
         /* Regist Insert-Parameter-Context maker */
-        TRecordHandler lamda_future_event = [this](std::shared_ptr<cmd::ICommand> cmd) -> std::string {
+        TRecordHandler lamda_future_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_FUTURE_EVENT ") VALUES(";
 
             try {
-                auto record = make_base_record(cmd);
+                if( cmd.get() != NULL ) {
+                    record = make_base_record(cmd);
+                }
+
+                if( record.get() == NULL ) {
+                    throw std::logic_error("lamda_future_event: We need record parameter.");
+                }
+
+                // check record Key-List.
+                if( record->find(KEY_UUID) == record->end() 
+                    || record->find(KEY_WHO) == record->end() 
+                    || record->find(KEY_WHEN_TEXT) == record->end() 
+                    || record->find(KEY_WHEN) == record->end() 
+                    || record->find(KEY_WHERE) == record->end() 
+                    || record->find(KEY_WHAT) == record->end() 
+                    || record->find(KEY_HOW) == record->end() 
+                    || record->find(KEY_PAYLOAD) == record->end() 
+                    ) {
+                    throw std::logic_error("lamda_future_event: There is not exist MANDATORY KEY in record.");
+                }
 
                 context = context + "'" + (*record)[KEY_UUID] + "',"  \
                                   + "'" + (*record)[KEY_WHO] + "',"  \
@@ -404,39 +476,149 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
         };
 
 
-        TRecordHandler lamda_future_period = [this](std::shared_ptr<cmd::ICommand> cmd) -> std::string {
+        TRecordHandler lamda_future_period = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_FUTURE_PERIOD ") VALUES(";
 
             try {
-                uint32_t period;
-                auto record = make_base_record(cmd);
+                if( cmd.get() != NULL ) {
+                    uint32_t period;
+                    record = make_base_record(cmd);
 
-                std::string period_type = cmd->when().get_type();
-                if( period_type != principle::CWhen::TYPE_ROUTINE_DAY && period_type != principle::CWhen::TYPE_ROUTINE_WEEK ) {
-                    throw std::logic_error("This CMD have not Period-type WHEN.");
-                }
+                    std::string period_type = cmd->when().get_type();
+                    if( period_type != principle::CWhen::TYPE_ROUTINE_DAY && period_type != principle::CWhen::TYPE_ROUTINE_WEEK ) {
+                        throw std::logic_error("lamda_future_period: This CMD have not Period-type WHEN.");
+                    }
 
-                if( period_type == principle::CWhen::TYPE_ROUTINE_DAY ) {
                     period = cmd->when().get_period();
+                    if( period_type == principle::CWhen::TYPE_ROUTINE_WEEK ) {
+                        period *= 7;
+                    }
+
+                    (*record)[KEY_PERIOD_TYPE] = period_type;
+                    (*record)[KEY_PERIOD] = std::to_string(period);
                 }
-                else if( period_type == principle::CWhen::TYPE_ROUTINE_WEEK ) {
-                    period = cmd->when().get_period() * 7;
+
+                if( record.get() == NULL ) {
+                    throw std::logic_error("lamda_future_period: We need record parameter.");
                 }
-                else {
-                    std::string err = "Not supported period_type(" + period_type + ")";
-                    throw std::out_of_range(err);
+
+                // check record Key-List.
+                if( record->find(KEY_UUID) == record->end() 
+                    || record->find(KEY_WHO) == record->end() 
+                    || record->find(KEY_PERIOD_TYPE) == record->end() 
+                    || record->find(KEY_PERIOD) == record->end() 
+                    || record->find(KEY_WHEN_TEXT) == record->end() 
+                    || record->find(KEY_WHEN) == record->end() 
+                    || record->find(KEY_WHERE) == record->end() 
+                    || record->find(KEY_WHAT) == record->end() 
+                    || record->find(KEY_HOW) == record->end() 
+                    || record->find(KEY_PAYLOAD) == record->end() 
+                    ) {
+                    throw std::logic_error("lamda_future_period: There is not exist MANDATORY KEY in record.");
                 }
 
                 context = context + "'" + (*record)[KEY_UUID] + "',"  \
                                   + "'" + (*record)[KEY_WHO] + "',"  \
-                                  + "'" + period_type + "',"  \
-                                  + std::to_string(period) + ","  \
+                                  + "'" + (*record)[KEY_PERIOD_TYPE] + "',"  \
+                                  + (*record)[KEY_PERIOD] + ","  \
                                   + "'" + (*record)[KEY_WHEN_TEXT] + "',"  \
                                   + (*record)[KEY_WHEN] + ","  \
                                   + "'" + (*record)[KEY_WHERE] + "',"  \
                                   + "'" + (*record)[KEY_WHAT] + "',"  \
                                   + "'" + (*record)[KEY_HOW] + "',"  \
                                   + "'" + (*record)[KEY_PAYLOAD] + "'"  \
+                                  + ")";
+            }
+            catch( const std::exception& e ) {
+                LOGERR("%s", e.what());
+                throw e;
+            }
+            return context;
+        };
+
+        TRecordHandler lamda_now_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+            std::string context = "(" KEYS_NOW_EVENT ") VALUES(";
+
+            try {
+                if( record.get() == NULL ) {
+                    throw std::logic_error("lamda_now_event: We need record parameter.");
+                }
+
+                if( cmd.get() != NULL ) {
+                    throw std::logic_error("lamda_now_event: Not support CMD-parameter case.");
+                }
+
+                // check record Key-List.
+                if( record->find(KEY_UUID) == record->end() 
+                    || record->find(KEY_WHO) == record->end() 
+                    || record->find(KEY_WHEN_TEXT) == record->end() 
+                    || record->find(KEY_WHEN) == record->end() 
+                    || record->find(KEY_WHERE) == record->end() 
+                    || record->find(KEY_WHAT) == record->end() 
+                    || record->find(KEY_HOW) == record->end() 
+                    || record->find(KEY_PAYLOAD) == record->end() 
+                    || record->find(KEY_MSG_ID) == record->end() 
+                    || record->find(KEY_STATE) == record->end() 
+                    ) {
+                    throw std::logic_error("lamda_now_event: There is not exist MANDATORY KEY in record.");
+                }
+
+                context = context + "'" + (*record)[KEY_UUID] + "',"  \
+                                  + "'" + (*record)[KEY_WHO] + "',"  \
+                                  + "'" + (*record)[KEY_WHEN_TEXT] + "',"  \
+                                  + (*record)[KEY_WHEN] + ","  \
+                                  + "'" + (*record)[KEY_WHERE] + "',"  \
+                                  + "'" + (*record)[KEY_WHAT] + "',"  \
+                                  + "'" + (*record)[KEY_HOW] + "',"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
+                                  + (*record)[KEY_MSG_ID] + ","  \
+                                  + "'" + (*record)[KEY_STATE] + "',"  \
+                                  + ")";
+            }
+            catch( const std::exception& e ) {
+                LOGERR("%s", e.what());
+                throw e;
+            }
+            return context;
+        };
+
+        TRecordHandler lamda_past_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+            std::string context = "(" KEYS_PAST_EVENT ") VALUES(";
+
+            try {
+                if( record.get() == NULL ) {
+                    throw std::logic_error("lamda_past_event: We need record parameter.");
+                }
+
+                if( cmd.get() != NULL ) {
+                    throw std::logic_error("lamda_past_event: Not support CMD-parameter case.");
+                }
+
+                // check record Key-List.
+                if( record->find(KEY_UUID) == record->end() 
+                    || record->find(KEY_WHO) == record->end() 
+                    || record->find(KEY_WHEN_TEXT) == record->end() 
+                    || record->find(KEY_WHEN) == record->end() 
+                    || record->find(KEY_WHERE) == record->end() 
+                    || record->find(KEY_WHAT) == record->end() 
+                    || record->find(KEY_HOW) == record->end() 
+                    || record->find(KEY_PAYLOAD) == record->end() 
+                    || record->find(KEY_MSG_ID) == record->end() 
+                    || record->find(KEY_STATE) == record->end() 
+                    ) {
+                    throw std::logic_error("lamda_past_event: There is not exist MANDATORY KEY in record.");
+                }
+
+                context = context + "'" + (*record)[KEY_UUID] + "',"  \
+                                  + "'" + (*record)[KEY_WHO] + "',"  \
+                                  + "'" + (*record)[KEY_WHEN_TEXT] + "',"  \
+                                  + (*record)[KEY_WHEN] + ","  \
+                                  + "'" + (*record)[KEY_WHERE] + "',"  \
+                                  + "'" + (*record)[KEY_WHAT] + "',"  \
+                                  + "'" + (*record)[KEY_HOW] + "',"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
+                                  + (*record)[KEY_MSG_ID] + ","  \
+                                  + "'" + (*record)[KEY_STATE] + "',"  \
                                   + ")";
             }
             catch( const std::exception& e ) {
@@ -448,6 +630,8 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
 
         _mm_make_context_4ins_[Ttype::ENUM_FUTURE][std::string(DB_TABLE_EVENT)] = lamda_future_event;
         _mm_make_context_4ins_[Ttype::ENUM_FUTURE][std::string(DB_TABLE_PERIOD)] = lamda_future_period;
+        _mm_make_context_4ins_[Ttype::ENUM_NOW][std::string(DB_TABLE_EVENT)] = lamda_now_event;
+        _mm_make_context_4ins_[Ttype::ENUM_PAST][std::string(DB_TABLE_EVENT)] = lamda_past_event;
 
 
         /* Regist Condition-Context maker */
@@ -491,6 +675,43 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
         throw e;
     }
 }
+
+
+template std::string CDBhandler::convert_string<int8_t>( int8_t value );
+template std::string CDBhandler::convert_string<int16_t>( int16_t value );
+template std::string CDBhandler::convert_string<int32_t>( int32_t value );
+template std::string CDBhandler::convert_string<uint8_t>( uint8_t value );
+template std::string CDBhandler::convert_string<uint16_t>( uint16_t value );
+template std::string CDBhandler::convert_string<uint32_t>( uint32_t value );
+template std::string CDBhandler::convert_string<double>( double value );
+template std::string CDBhandler::convert_string<float>( float value );
+
+template<>
+std::string CDBhandler::convert_string(Tstate value) {
+    switch( value ) {
+    case Tstate::ENUM_TRIG:
+        return "TRIGGERED";
+    case Tstate::ENUM_RCV_ACK:
+        return "RCV_ACK";
+    case Tstate::ENUM_STARTED:
+        return "STARTED";
+    case Tstate::ENUM_DONE:
+        return "DONE";
+    case Tstate::ENUM_FAIL:
+        return "FAIL";
+    default:
+        {
+            std::string err = "Not Supported Tstate(" + std::to_string(static_cast<uint32_t>(value)) + ").";
+            throw std::out_of_range(err);
+        }
+    }
+}
+
+template<typename T>
+std::string CDBhandler::convert_string(T value) {
+    return std::to_string(value);
+}
+
 
 
 }   // db

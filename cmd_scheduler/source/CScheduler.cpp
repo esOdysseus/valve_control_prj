@@ -115,26 +115,29 @@ void CScheduler::send_command( const std::string& peer_app, const std::string& p
 
 void CScheduler::send_command( alias::CAlias& peer, std::shared_ptr<Tdb::Trecord>& record ) {
     try {
-        unsigned long msg_id = 0;
+        uint32_t msg_id = 0;
+        Tdb::Tstate state = Tdb::Tstate::ENUM_FAIL;
+        Tdb::Ttype db_type = Tdb::Ttype::ENUM_PAST;
         std::string payload = Tdb::get_payload(*record);
         LOGI("Send request message to peer(%s/%s).", peer.app_path.data(), peer.pvd_id.data());
 
-        {
-            // we need lock for NOW-DB consistency-timing.
-            ; // TODO
+        // we need lock for NOW-DB consistency-timing.
+        std::lock_guard<std::mutex> locker(_mtx_send_lock_);
 
-            // Trig peer to do activity according to a json-data. (send json-data to peer)
-            //      We will get msg-id from MCommunicator->request()
-            //      If msg-id == 0, then try again sending it with random wait. (Max retry 3 times.)
-            msg_id = _m_comm_mng_->request( peer, payload );
+        // Trig peer to do activity according to a json-data. (send json-data to peer)
+        //      We will get msg-id from MCommunicator->request()
+        msg_id = _m_comm_mng_->request( peer, payload, common::E_STATE::E_STATE_THR_CMD );
 
-            // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
-            // But msg-id == 0, then append record to DataBase(Now-DB) with state == FAIL & msg-id.
-
-            // we need unlock for NOW-DB consistency-timing.
+        // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
+        // But msg-id == 0, then append record to DataBase(PAST-DB) with state == FAIL & msg-id.
+        if( msg_id != 0 ) {
+            state = Tdb::Tstate::ENUM_TRIG;
+            db_type = Tdb::Ttype::ENUM_NOW;
         }
 
-        // Remove a record that is sent to peer from DataBase(Future-DB).
+        _m_db_.append(record, Tdb::Tkey::ENUM_MSG_ID, msg_id);
+        _m_db_.append(record, Tdb::Tkey::ENUM_STATE, state);
+        _m_db_.insert_record(db_type, Tdb::DB_TABLE_EVENT, record);
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -290,6 +293,59 @@ void CScheduler::destroy_threads(void) {
     }
 }
 
+void CScheduler::process_now_space( std::shared_ptr<cmd::ICommand>& cmd ) {
+    try {
+        ;   // TODO
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
+}
+
+void CScheduler::process_future_space( std::shared_ptr<cmd::ICommand>& rcmd ) {
+    try {
+        std::string app_path = rcmd->who().get_app();
+        std::string pvd_id = rcmd->who().get_pvd();
+        auto when = rcmd->when();
+        std::string t_when = when.get_type();
+
+        // Display 6-principle
+        LOGD("who=%s/%s", app_path.data(), pvd_id.data());
+        LOGD("when=%s", t_when.data());
+        LOGD("where=%s", rcmd->where().get_type().data());
+        LOGD("what=%s_%d", rcmd->what().get_type().data(), rcmd->what().get_which());
+        LOGD("how=%s", rcmd->how().get_method().data());
+
+        // Check whether CMD is completed Task-Pair case, or not.
+        // If CMD is in-completed Task-Pair case, then throw Exception.
+        ;   // TODO
+
+        // If "when" is relative-time or absolute-time is under now + 5 seconds, (Not "period when")
+        // Then trigger peer to do activity by the CMD immediatlly.
+        if( t_when == principle::CWhen::TYPE_ONECE || t_when == principle::CWhen::TYPE_SPECIAL_TIME ) {
+            double cur_time = time_pkg::CTime::get<double>();
+
+            if( when.get_start_time() <= (cur_time + 5.0) ) {
+                auto record = _m_db_.make_base_record(rcmd);
+                send_command( app_path, pvd_id, record );
+                return ;
+            }
+        }
+
+        // Classfy which When-info of CMD is EventBase-type or PeriodBase-type.
+        // Store json-data of body in CMD to Database(Future-DB) according to type-info of "when" in CMD.
+        if( t_when == principle::CWhen::TYPE_ROUTINE_DAY || t_when == principle::CWhen::TYPE_ROUTINE_WEEK ) {
+            _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, rcmd);
+        }
+        else {
+            _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT, rcmd);
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
+}
+
 /****
  * Treading for RX/TX Command
  */
@@ -301,42 +357,18 @@ int CScheduler::handle_rx_cmd(void) {
                 throw std::runtime_error("pop_cmd() is invalid operation.");
             }
 
-            std::string app_path = rcmd->who().get_app();
-            std::string pvd_id = rcmd->who().get_pvd();
-            auto when = rcmd->when();
-            std::string t_when = when.get_type();
-
-            // Display 6-principle
-            LOGD("who=%s/%s", app_path.data(), pvd_id.data());
-            LOGD("when=%s", t_when.data());
-            LOGD("where=%s", rcmd->where().get_type().data());
-            LOGD("what=%s_%d", rcmd->what().get_type().data(), rcmd->what().get_which());
-            LOGD("how=%s", rcmd->how().get_method().data());
-
-            // Check whether CMD is completed Task-Pair case, or not.
-            // If CMD is in-completed Task-Pair case, then throw Exception.
-            ;   // TODO
-
-            // If "when" is relative-time or absolute-time is under now + 5 seconds, (Not "period when")
-            // Then trigger peer to do activity by the CMD immediatlly.
-            if( t_when == principle::CWhen::TYPE_ONECE || t_when == principle::CWhen::TYPE_SPECIAL_TIME ) {
-                double cur_time = time_pkg::CTime::get<double>();
-
-                if( when.get_start_time() <= (cur_time + 5.0) ) {
-                    auto record = _m_db_.make_base_record(rcmd);
-                    send_command( app_path, pvd_id, record );
+            /** for Received ACK/Action-Start/Action-Fail/Resp(Done) */
+            if( rcmd->proto_name() == std::string(cmd::CuCMD::PROTOCOL_NAME) ) {
+                // If flag is ACK/ACT-START/STATE-ERROR/RESP message, then update NOW-DB setting.
+                if( rcmd->get_flag( Eflag::E_FLAG_ACK_MSG | Eflag::E_FLAG_ACTION_START | 
+                                    Eflag::E_FLAG_STATE_ERROR | Eflag::E_FLAG_RESP_MSG ) != 0 ) {
+                    process_now_space( rcmd );
                     continue;
                 }
             }
 
-            // Classfy which When-info of CMD is EventBase-type or PeriodBase-type.
-            // Store json-data of body in CMD to Database(Future-DB) according to type-info of "when" in CMD.
-            if( t_when == principle::CWhen::TYPE_ROUTINE_DAY || t_when == principle::CWhen::TYPE_ROUTINE_WEEK ) {
-                _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, rcmd);
-            }
-            else {
-                _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT, rcmd);
-            }
+            /** for Received Request-CMD. */
+            process_future_space( rcmd );
         }
         catch (const std::exception &e) {
             LOGERR("%s", e.what());

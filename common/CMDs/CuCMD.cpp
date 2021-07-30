@@ -134,13 +134,17 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         }
         protocol = message->get(PROTOCOL_NAME);
     
+        // Check ab-normal state & set flag
+        if ( _state_ & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR | E_STATE::E_STATE_ACTION_FAIL) ) {
+            _flag_ |= E_FLAG::E_FLAG_STATE_ERROR;
+        }
+
         protocol->set_property("flag", _flag_);
         protocol->set_property("state", _state_);
         protocol->set_property("msg_id", _msg_id_);
 
-        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG) == false && 
-             get_flag(E_FLAG::E_FLAG_ACTION_START) == false && 
-             get_flag(E_FLAG::E_FLAG_KEEPALIVE) == false ) {
+        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR) == false && 
+             get_flag(E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE) == false ) {
             const char* body = NULL;
             Json_DataType json_manager;
 
@@ -159,6 +163,51 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
             assert( (body = json_manager->print_buf()) != NULL );
 
             protocol->set_payload( body, strlen(body) );
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        message.reset();
+        protocol.reset();
+        throw CException(E_ERROR::E_ERR_FAIL_ENCODING_CMD);
+    }
+
+    return message;
+}
+
+std::shared_ptr<payload::CPayload> CuCMD::force_encode( std::shared_ptr<ICommunicator>& handler, 
+                                                        std::string payload, 
+                                                        FlagType flag, common::StateType state, uint32_t& msg_id ) {
+    std::shared_ptr<payload::CPayload> message;
+    std::shared_ptr<IProtocolInf> protocol;
+
+    if( handler.get() == NULL ) {
+        LOGW("Communicator is not exist.");
+        return message;
+    }
+
+    try {
+        message = handler->create_payload();
+        if( message.get() == NULL ) {
+            throw std::logic_error("Message-Creating is failed.");
+        }
+        protocol = message->get(PROTOCOL_NAME);
+        if( msg_id == 0 ) {
+            msg_id = gen_random_msg_id();
+        }
+    
+        // Check ab-normal state & set flag
+        if ( state & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR | E_STATE::E_STATE_ACTION_FAIL) ) {
+            flag |= E_FLAG::E_FLAG_STATE_ERROR;
+        }
+        
+        protocol->set_property("flag", flag);
+        protocol->set_property("state", state);
+        protocol->set_property("msg_id", msg_id);
+
+        if ( (flag & (E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR)) == 0 && 
+             (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE)) == 0 ) {
+            protocol->set_payload( payload.c_str(), payload.length() );
         }
     }
     catch ( const std::exception& e ) {

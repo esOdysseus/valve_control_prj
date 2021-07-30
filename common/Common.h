@@ -19,17 +19,18 @@ typedef enum E_FLAG {
     E_FLAG_RESP_MSG     = 0x10,     // 0: REQ/PUB message       , 1: RESP message
     E_FLAG_ACK_MSG      = 0x20,     // 0: not ack message       , 1: ACK message
     E_FLAG_ACTION_START = 0x40,     // 0: not act-start msg     , 1: ACT-START msg
-    E_FLAG_STATE_ERROR  = 0x80,     // 0: normal state          , 1: abnormal state
+    E_FLAG_STATE_ERROR  = 0x80,     // 0: normal state          , 1: abnormal state (detail is depend on E_STATE)
     E_FLAG_ALL          = 0xFF
 } E_FLAG;
 
 typedef enum E_STATE {
     E_NO_STATE              = 0x0000,
-    E_STATE_THR_GPS         = 0x0001,
-    E_STATE_THR_CMD         = 0x0002,
-    E_STATE_THR_KEEPALIVE   = 0x0004,
-    E_STATE_OUT_OF_SERVICE  = 0x0008,
-    E_STATE_OCCURE_ERROR    = 0x0010,
+    E_STATE_THR_GPS         = 0x0001,   // GP-ctrl  -Thread: It indicate place that CMD is triggered.
+    E_STATE_THR_CMD         = 0x0002,   // Service  -Thread: It indicate place that CMD is triggered.
+    E_STATE_THR_KEEPALIVE   = 0x0004,   // KeepAlive-Thread: It indicate place that CMD is triggered.
+    E_STATE_OUT_OF_SERVICE  = 0x0008,   // If Service is stoped, then this state set.
+    E_STATE_OCCURE_ERROR    = 0x0010,   // If Unintended-System Error is occured, then this state set.
+    E_STATE_ACTION_FAIL     = 0x0020,   // 0: not exist means  , 1: fail with action
     E_STATE_ALL             = 0xFFFF
 } E_STATE;
 

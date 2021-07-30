@@ -25,6 +25,7 @@ public:
 
 private:
     using Tdb = db::CDBhandler;
+    using Eflag = cmd::CuCMD::E_FLAG;
 
 public:
     static std::shared_ptr<CScheduler> get_instance( void );
@@ -65,6 +66,10 @@ private:
 
     void destroy_threads(void);
 
+    void process_now_space( std::shared_ptr<cmd::ICommand>& cmd );
+
+    void process_future_space( std::shared_ptr<cmd::ICommand>& cmd );
+
     int handle_rx_cmd(void);
 
     int handle_tx_cmd(void);
@@ -85,6 +90,9 @@ private:
     std::mutex _mtx_queue_lock_;
     std::condition_variable _m_queue_cv_;
     std::queue<std::shared_ptr<cmd::ICommand>> _mv_cmds_;
+
+    /** Send CMD */
+    std::mutex _mtx_send_lock_;
 
 };
 

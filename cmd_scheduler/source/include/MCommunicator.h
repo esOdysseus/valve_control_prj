@@ -27,6 +27,7 @@ public:
 
 private:
     using E_FLAG = common::E_FLAG;
+    using E_STATE = common::E_STATE;
     using CommHandler = std::shared_ptr<ICommunicator>;
     using TCommList = std::list<CommHandler>;
     using TCommMapper = std::map<std::string /*pvd-id*/, CommHandler /*communicator-instance*/>;
@@ -43,7 +44,7 @@ public:
     void start( void );
 
     /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
-    unsigned long request( const alias::CAlias& peer, const std::string& json_cmd, bool require_resp=true );
+    uint32_t request( const alias::CAlias& peer, const std::string& json_cmd, common::StateType state, bool require_resp=true );
 
     // bool send_cmd_done(std::shared_ptr<CMDType> &cmd);
 

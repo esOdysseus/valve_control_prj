@@ -19,6 +19,7 @@ namespace cmd {
 class CuCMD: public ICommand {
 public:
     using E_FLAG = common::E_FLAG;
+    using E_STATE = common::E_STATE;
     static constexpr const char* NAME = "uCMD";
     static constexpr const char* PROTOCOL_NAME = "CPUniversalCMD";
 
@@ -39,6 +40,10 @@ public:
     bool decode(std::shared_ptr<IProtocolInf>& protocol) override;
 
     std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler ) override;
+
+    static std::shared_ptr<payload::CPayload> force_encode( std::shared_ptr<ICommunicator>& handler, 
+                                                            std::string payload, 
+                                                            FlagType flag, common::StateType state, uint32_t& msg_id );
 
     // getter
     unsigned long get_id(void) override { return _msg_id_; }
@@ -62,7 +67,7 @@ public:
 private:
     void clear(void);
 
-    uint32_t gen_random_msg_id(void);
+    static uint32_t gen_random_msg_id(void);
 
 private:
     // Data-Structure for Decoded packet.

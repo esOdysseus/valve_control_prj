@@ -257,10 +257,10 @@ void CCommunicator::set_state_of_cmd(std::shared_ptr<CMDType> &cmd) {
     cur_state = get_state(E_STATE::E_STATE_ALL);
     cmd->set_state(cur_state);
 
-    // Check ab-normal state & set flag
-    if ( cur_state & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR) ) {
-        cmd->set_flag(E_FLAG::E_FLAG_STATE_ERROR, 1);
-    }
+    // // Check ab-normal state & set flag
+    // if ( cur_state & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR | E_STATE::E_STATE_ACTION_FAIL) ) {
+    //     cmd->set_flag(E_FLAG::E_FLAG_STATE_ERROR, 1);
+    // }
 }
 
 

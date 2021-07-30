@@ -78,16 +78,59 @@ void MCommunicator::start( void ) {
 }
 
 /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
-unsigned long MCommunicator::request( const alias::CAlias& peer, const std::string& json_cmd, bool require_resp ) {
-    unsigned long msg_id = 0;
+uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& json_cmd, common::StateType state, bool require_resp ) {
+    uint32_t msg_id = 0;
 
     try {
-        ;   // TODO
-    }
-    catch( const std::exception& e ) {
-        LOGERR("%s", e.what());
-    }
+        cmd::ICommand::FlagType flag = E_FLAG::E_FLAG_NONE;
+        CommHandler handler;
+        std::string proto = cmd::CuCMD::PROTOCOL_NAME;
+        std::string peer_app = peer.app_path;
+        std::string peer_pvd = peer.pvd_id;
+        std::shared_ptr<payload::CPayload> new_payload;
 
+        // Search communicators that is connected with peer.
+        std::shared_ptr<TCommList> comms_list = get_comms( peer_app, peer_pvd, proto );
+        if( comms_list.get() == NULL ) {
+            throw std::runtime_error("TCommList memory-allocation is failed.");
+        }
+
+        // Validation check.
+        if( comms_list->size() <= 0 ) {
+            std::string err = "Communicator for peer(" + peer_app + "/" + peer_pvd + ") of "+ proto +" Protocol is not exist.";
+            throw std::logic_error(err);
+        }
+
+        if( comms_list->size() > 1 ) {
+            std::string err = "Communicator for peer(" + peer_app + "/" + peer_pvd + ") of "+ proto +" Protocol is over than 1.";
+            throw std::logic_error(err);
+        }
+        handler = *comms_list->begin();
+
+        // Set flag & state variables
+        flag |= E_FLAG::E_FLAG_REQUIRE_ACK;    // require ACK message.
+        flag |= E_FLAG::E_FLAG_REQUIRE_ACT;    // require Action-Start message.
+        if( require_resp == true ) {
+            flag |= E_FLAG::E_FLAG_REQUIRE_RESP;    // require ACT-done message.
+        }
+        state |= _m_myself_->get_state(E_STATE::E_STATE_OUT_OF_SERVICE); 
+        state |= _m_myself_->get_state(E_STATE::E_STATE_OCCURE_ERROR);
+
+        // Force-encode to packet.
+        new_payload = cmd::CuCMD::force_encode( handler, json_cmd, flag, state, msg_id );
+        if( new_payload.get() == NULL ) {
+            LOGERR("Encoding message is failed for peer(%s/%s) & proto(%s)", peer_app.data(), peer_pvd.data(), proto.data() );
+            throw CException(E_ERROR::E_ERR_FAIL_ENCODING_CMD);
+        }
+
+        // Send message.
+        return handler->send(peer_app, peer_pvd, new_payload);
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        msg_id = 0;
+    }
+    
     return msg_id;
 }
 
@@ -417,6 +460,13 @@ void MCommunicator::cb_receive_msg_handle(std::string peer_app, std::string peer
         if( rcmd->decode( protocol ) == false ) {
             std::string err = "Decoding message is failed. (peer=" + peer_app + "/" + peer_pvd + ", proto=" + proto_name + ")";
             throw std::logic_error(err);
+        }
+
+        if ( proto_name == cmd::CuCMD::PROTOCOL_NAME ) {
+            if( rcmd->get_flag(E_FLAG::E_FLAG_KEEPALIVE) != 0 ) {
+                LOGI("Arrive KeepAlive-message from peer(%s/%s)", peer_app.data(), peer_pvd.data());
+                return;
+            }
         }
 
         // Internal Publishing of CMD-event .to APPs-Listener.

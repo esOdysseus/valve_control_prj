@@ -16,6 +16,7 @@ class CDBhandler {
 public:
     using Trecord = db_pkg::CDBsqlite::Trecord;
     using TVrecord = db_pkg::CDBsqlite::TVrecord;
+    using Tstate = enum class enum_state: uint8_t { ENUM_TRIG=1, ENUM_RCV_ACK=2, ENUM_STARTED=3, ENUM_DONE=4, ENUM_FAIL=5 };
     using Ttype = enum class enum_db_type: uint8_t { ENUM_FUTURE=1, ENUM_NOW=2, ENUM_PAST=3 };
     using Tkey = enum class enum_key_type: uint16_t {
         ENUM_MSG_ID=1,
@@ -44,7 +45,7 @@ public:
     using TFPconvert = std::function<void (Ttype /*db_type*/, Trecord& /*record*/, std::string& /*payload*/)>;
 
 private:
-    using TRecordHandler = std::function<std::string(std::shared_ptr<cmd::ICommand> /*cmd*/)>;
+    using TRecordHandler = std::function<std::string(std::shared_ptr<cmd::ICommand> /*cmd*/, std::shared_ptr<Trecord> /*record*/)>;
     using TCondHandler = std::function<std::string(TFPcond&)>;
     using TMrHandler = std::map<std::string /*table-name*/, TRecordHandler>;
     using TMcHandler = std::map<std::string /*table-name*/, TCondHandler>;
@@ -58,7 +59,15 @@ public:
 
     std::shared_ptr<Trecord> make_base_record(std::shared_ptr<cmd::ICommand>& cmd);
 
+    template<typename T>
+    static void append(std::shared_ptr<Trecord>& record, Tkey key, T value) {
+        std::string s_key = _gm_key_names_all_.find(key)->second;
+        (*record)[ s_key ] = convert_string<T>(value);
+    }
+
     // setter
+    void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<Trecord>& record);
+
     void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd);
 
     void remove_record(Ttype db_type, const char* table_name, const std::string uuid);
@@ -88,6 +97,9 @@ private:
 
     void regist_handlers_4_context_maker(void);
 
+    template<typename T>
+    static std::string convert_string(T value);
+
 public:
     #define TABLE_EVENT     "EventBase"
     #define TABLE_PERIOD    "PeriodBase"
@@ -101,6 +113,8 @@ private:
     std::map<Ttype, TMrHandler>  _mm_make_context_4ins_;
 
     std::map<Ttype, TMcHandler> _mm_make_context_4con_;
+
+    static const std::map<Tkey, std::string> _gm_key_names_all_;
 
     static const std::map<Ttype, std::map<Tkey, std::string>> _gm_key_names_;
     
