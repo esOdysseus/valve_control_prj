@@ -227,7 +227,7 @@ CuCMD::FlagType CuCMD::get_flag(FlagType pos) {
 }
 
 // setter
-void CuCMD::set_id(unsigned long value) { 
+void CuCMD::set_id(uint32_t value) { 
     _msg_id_ = value;
     if( _msg_id_ == 0 ) {
         _msg_id_ = gen_random_msg_id();

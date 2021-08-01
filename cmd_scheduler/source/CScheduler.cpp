@@ -204,7 +204,8 @@ std::shared_ptr<cmd::ICommand> CScheduler::pop_cmd( void ) {    // Blocking
     return cmd;
 }
 
-void CScheduler::convert_json_to_event( std::string& payload, double& when ) {
+double CScheduler::convert_json_to_event( std::string& payload, double& next_when ) {
+    double when = 0.0;
     try {
         if( payload.empty() == true ) {
             throw std::logic_error("payload is empty. we need it.");
@@ -226,6 +227,7 @@ void CScheduler::convert_json_to_event( std::string& payload, double& when ) {
 
         // make specific eventual 'when'-part.
         when = cwhen->get_start_time();
+        next_when = cwhen->get_next_period(when);
         cwhen.reset();
         cwhen = std::make_shared<principle::CWhen>(principle::CWhen::TYPE_SPECIAL_TIME, when);
         if( cwhen.get() == NULL ) {
@@ -245,6 +247,7 @@ void CScheduler::convert_json_to_event( std::string& payload, double& when ) {
         LOGERR("%s", e.what());
         throw e;
     }
+    return when;
 }
 
 /****
@@ -293,13 +296,112 @@ void CScheduler::destroy_threads(void) {
     }
 }
 
-void CScheduler::process_now_space( std::shared_ptr<cmd::ICommand>& cmd ) {
+bool CScheduler::process_now_space( std::shared_ptr<cmd::ICommand>& cmd ) {
+    bool result = false;
     try {
-        ;   // TODO
+        uint16_t cmd_state = 0;
+        uint32_t msg_id = 0;
+        Tdb::Tstate state;
+        std::shared_ptr<cmd::CuCMD> ucmd;
+
+        if( cmd->proto_name() != std::string(cmd::CuCMD::PROTOCOL_NAME) ) {
+            std::string warn = "Protocol is not " + std::string(cmd::CuCMD::PROTOCOL_NAME);
+            throw std::out_of_range(warn);
+        }
+        ucmd = std::dynamic_pointer_cast<cmd::CuCMD>( cmd );
+
+        // If flag is ACK/ACT-START/STATE-ERROR/RESP message, then update NOW-DB setting.
+        if( ucmd->get_flag( Eflag::E_FLAG_ACK_MSG | Eflag::E_FLAG_ACTION_START | 
+                            Eflag::E_FLAG_STATE_ERROR | Eflag::E_FLAG_RESP_MSG ) == 0 ) {
+            throw std::out_of_range("CMD-flag is not ACK/START/RESP/ERROR msg.");
+        }
+
+        // Check Peer System-Error.
+        cmd_state = ucmd->get_state();
+        if( ucmd->get_flag(Eflag::E_FLAG_STATE_ERROR) && (cmd_state & Estate::E_STATE_ACTION_FAIL) == 0 ) {
+            std::string warn = "Peer(" + ucmd->get_from().app_path + "/" + ucmd->get_from().pvd_id + ") has some system-error.";
+            throw std::invalid_argument(warn);
+        }
+
+        // Get Message-ID
+        msg_id = ucmd->get_id();
+        if( msg_id == 0 ) {
+            throw std::invalid_argument("msg_id is NULL. (invalid CMD)");
+        }
+
+        Tdb::TFPcond lamda_make_condition = [&msg_id](std::string kwho, std::string kwhen, 
+                                                      std::string kwhere, std::string kwhat, 
+                                                      std::string khow, std::string kuuid,
+                                                      std::map<Tdb::Tkey, std::string>& kopt) -> std::string {
+            // Load records from DataBase(NOW-DB) if "msg_id" is equal with targeting msg-id.
+            auto key_msgid = kopt[Tdb::Tkey::ENUM_MSG_ID];
+            return (key_msgid + " == " + std::to_string(msg_id) + " ORDER BY " + kwhen + " DESC");
+        };
+        
+        // Get State value.
+        if( ucmd->get_flag(Eflag::E_FLAG_ACK_MSG) ) {
+            state = Tdb::Tstate::ENUM_RCV_ACK;
+        }
+        else if ( ucmd->get_flag(Eflag::E_FLAG_ACTION_START) ) {
+            state = Tdb::Tstate::ENUM_STARTED;
+        }
+        else if ( ucmd->get_flag(Eflag::E_FLAG_STATE_ERROR) ) {
+            state = Tdb::Tstate::ENUM_FAIL;
+        }
+        else if ( ucmd->get_flag(Eflag::E_FLAG_RESP_MSG) ) {
+            state = Tdb::Tstate::ENUM_DONE;
+        }
+
+        // Update State in NOW-db.
+        _m_db_.update_record(Tdb::Ttype::ENUM_NOW, Tdb::DB_TABLE_EVENT, 
+                             Tdb::Tkey::ENUM_MSG_ID, msg_id, 
+                             Tdb::Tkey::ENUM_STATE, state);
+
+        // Move record from NOW-db to PAST-db.
+        if( state == Tdb::Tstate::ENUM_FAIL || state == Tdb::Tstate::ENUM_DONE ) {
+            auto records = _m_db_.get_records(Tdb::Ttype::ENUM_NOW, Tdb::DB_TABLE_EVENT, lamda_make_condition, nullptr);
+            auto itr = records->begin();
+            if( itr == records->end() ) {
+                std::string err = "Record(msg-id: " + std::to_string(msg_id) + ") is not exist in NOW-db.";
+                throw std::out_of_range(err);
+            }
+            _m_db_.insert_record(Tdb::Ttype::ENUM_PAST, Tdb::DB_TABLE_EVENT, *itr);
+            _m_db_.remove_record(Tdb::Ttype::ENUM_NOW, Tdb::DB_TABLE_EVENT, *itr);
+        }
+        result = true;
+    }
+    catch( const std::out_of_range& e ) {
+        LOGI("%s", e.what());
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
+        throw e;
     }
+
+    return result;
+}
+
+bool CScheduler::process_my_command( std::shared_ptr<cmd::ICommand>& cmd ) {
+    bool result = false;
+    try {
+        auto who = cmd->who();
+        if( who.get_app() != APP_PATH ) {
+            std::string info = "CMD is not self-APP_PATH(" + APP_PATH + ")";
+            throw std::out_of_range(info);
+        }
+
+        ;   // TODO
+        result = true;
+    }
+    catch( const std::out_of_range& e ) {
+        LOGI("%s", e.what());
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
 }
 
 void CScheduler::process_future_space( std::shared_ptr<cmd::ICommand>& rcmd ) {
@@ -343,6 +445,7 @@ void CScheduler::process_future_space( std::shared_ptr<cmd::ICommand>& rcmd ) {
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
+        throw e;
     }
 }
 
@@ -358,16 +461,16 @@ int CScheduler::handle_rx_cmd(void) {
             }
 
             /** for Received ACK/Action-Start/Action-Fail/Resp(Done) */
-            if( rcmd->proto_name() == std::string(cmd::CuCMD::PROTOCOL_NAME) ) {
-                // If flag is ACK/ACT-START/STATE-ERROR/RESP message, then update NOW-DB setting.
-                if( rcmd->get_flag( Eflag::E_FLAG_ACK_MSG | Eflag::E_FLAG_ACTION_START | 
-                                    Eflag::E_FLAG_STATE_ERROR | Eflag::E_FLAG_RESP_MSG ) != 0 ) {
-                    process_now_space( rcmd );
-                    continue;
-                }
+            if( process_now_space( rcmd ) == true ) {
+                continue;
             }
 
-            /** for Received Request-CMD. */
+            /** for Received Request-CMD for me(who) */
+            if( process_my_command( rcmd ) == true ) {
+                continue;
+            }
+
+            /** for Received Request-CMD for peer(who) */
             process_future_space( rcmd );
         }
         catch (const std::exception &e) {
@@ -394,8 +497,14 @@ int CScheduler::handle_tx_cmd(void) {
             Tdb::TFPconvert lamda_convertor = [&](Tdb::Ttype db_type, Tdb::Trecord& record, std::string& payload) -> void {
                 // When we load json-data from PeriodBase tables, We must convert "period when" to "specific when".
                 double when = 0.0;
-                convert_json_to_event( payload, when );
+                double next_when = 0.0;
+                std::string legacy_uuid = db_ref.get_uuid(record);
+
+                when = convert_json_to_event( payload, next_when );
                 db_ref.convert_record_to_event(db_type, record, when);
+                db_ref.update_record(db_type, Tdb::DB_TABLE_PERIOD, 
+                                     Tdb::Tkey::ENUM_UUID, legacy_uuid, 
+                                     Tdb::Tkey::ENUM_WHEN, next_when);
             };
 
             // We have to load json-data per tables. (EventBase/PeriodBase)

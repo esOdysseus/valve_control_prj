@@ -26,6 +26,7 @@ public:
 private:
     using Tdb = db::CDBhandler;
     using Eflag = cmd::CuCMD::E_FLAG;
+    using Estate = cmd::CuCMD::E_STATE;
 
 public:
     static std::shared_ptr<CScheduler> get_instance( void );
@@ -59,14 +60,16 @@ private:
 
     std::shared_ptr<cmd::ICommand> pop_cmd( void );     // Blocking function.
 
-    void convert_json_to_event( std::string& payload, double& when );
+    double convert_json_to_event( std::string& payload, double& next_when );
 
     /** Thread releated Functions. */
     void create_threads(void);
 
     void destroy_threads(void);
 
-    void process_now_space( std::shared_ptr<cmd::ICommand>& cmd );
+    bool process_now_space( std::shared_ptr<cmd::ICommand>& cmd );
+
+    bool process_my_command( std::shared_ptr<cmd::ICommand>& cmd );
 
     void process_future_space( std::shared_ptr<cmd::ICommand>& cmd );
 

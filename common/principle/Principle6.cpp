@@ -134,62 +134,27 @@ std::string CWhen::get_time(void) {
     return DATE_NULL_STR;
 }
 
-// reference function.
-double CWhen::get_next_week( double base_time, TEweek week, uint32_t period ) {
+double CWhen::get_next_period( double base_time ) {
+    double next_time = START_TIME_NULL;
     try {
-        uint32_t need_days = 0;
-        TEweek base_week = TEweek::E_WEEK_NONE;
-
-        if( base_time == START_TIME_NULL ) {
-            throw std::invalid_argument("base_time is invalid value(NULL).");
+        if( _type_ == TYPE_ROUTINE_WEEK ) {
+            next_time = get_next_week( base_time, _week_, _period_);
         }
-
-        if( TEweek::E_WEEK_NONE >= week || week >= TEweek::E_WEEK_CNT ) {
-            std::string err = "week is invalid value(" + std::to_string(week) + "). it support in \"mon, tues, wednes, thurs, fri, satur, sun\".";
+        else if( _type_ == TYPE_ROUTINE_DAY ) {
+            next_time = get_next_day( base_time, _period_ );
+        }
+        else {
+            std::string err = "Not Supported when-type (" + _type_ + ")";
             throw std::out_of_range(err);
         }
-
-        if( period == PERIOD_NULL ) {
-            throw std::invalid_argument("period is invalid value(NULL).");
-        }
-
-        // calculate need-days for next-week.
-        base_week = CTime::get_week( base_time );
-        need_days = ((week + 7) - base_week) % 7;
-        if (need_days == 0) {
-            need_days = 7;
-        }
-        // calculate need-days for target-week.
-        need_days += 7*(period-1);
-
-        return base_week + static_cast<double>( 24 * 3600 * need_days );
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
         throw e;
     }
-    return START_TIME_NULL;
+    return next_time;
 }
 
-double CWhen::get_next_day( double base_time, uint32_t period ) {
-    try {
-        if( base_time == START_TIME_NULL ) {
-            throw std::invalid_argument("base_time is invalid value(NULL).");
-        }
-
-        if( period == PERIOD_NULL ) {
-            throw std::invalid_argument("period is invalid value(NULL).");
-        }
-
-        return base_time + static_cast<double>( 24 * 3600 * period );
-    }
-    catch( const std::exception& e ) {
-        LOGERR("%s", e.what());
-        throw e;
-    }
-
-    return START_TIME_NULL;
-}
 
 /**************************************
  * Private Function definition.
@@ -355,6 +320,63 @@ void CWhen::check_validation( std::string type, double start_time,
         LOGERR("%s", e.what());
         throw e;
     }
+}
+
+// reference function.
+double CWhen::get_next_week( double base_time, TEweek week, uint32_t period ) {
+    try {
+        uint32_t need_days = 0;
+        TEweek base_week = TEweek::E_WEEK_NONE;
+
+        if( base_time == START_TIME_NULL ) {
+            throw std::invalid_argument("base_time is invalid value(NULL).");
+        }
+
+        if( TEweek::E_WEEK_NONE >= week || week >= TEweek::E_WEEK_CNT ) {
+            std::string err = "week is invalid value(" + std::to_string(week) + "). it support in \"mon, tues, wednes, thurs, fri, satur, sun\".";
+            throw std::out_of_range(err);
+        }
+
+        if( period == PERIOD_NULL ) {
+            throw std::invalid_argument("period is invalid value(NULL).");
+        }
+
+        // calculate need-days for next-week.
+        base_week = CTime::get_week( base_time );
+        need_days = ((week + 7) - base_week) % 7;
+        if (need_days == 0) {
+            need_days = 7;
+        }
+        // calculate need-days for target-week.
+        need_days += 7*(period-1);
+
+        return base_week + static_cast<double>( 24 * 3600 * need_days );
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+    return START_TIME_NULL;
+}
+
+double CWhen::get_next_day( double base_time, uint32_t period ) {
+    try {
+        if( base_time == START_TIME_NULL ) {
+            throw std::invalid_argument("base_time is invalid value(NULL).");
+        }
+
+        if( period == PERIOD_NULL ) {
+            throw std::invalid_argument("period is invalid value(NULL).");
+        }
+
+        return base_time + static_cast<double>( 24 * 3600 * period );
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return START_TIME_NULL;
 }
 
 

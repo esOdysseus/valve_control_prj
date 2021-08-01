@@ -263,6 +263,23 @@ void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::share
     }
 }
 
+void CDBhandler::remove_record(Ttype db_type, const char* table_name, std::shared_ptr<Trecord>& record) {
+    try {
+        std::string uuid;
+        auto itr = record->find(KEY_UUID);
+        if( itr == record->end() ) {
+            throw std::invalid_argument("Not Exist UUID key in record.");
+        }
+
+        uuid = itr->second;
+        remove_record(db_type, table_name, uuid);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
 void CDBhandler::remove_record(Ttype db_type, const char* table_name, const std::string uuid) {
     try {
         std::string table;
@@ -687,6 +704,11 @@ template std::string CDBhandler::convert_string<double>( double value );
 template std::string CDBhandler::convert_string<float>( float value );
 
 template<>
+std::string CDBhandler::convert_string(std::string value) {
+    return value;
+}
+
+template<>
 std::string CDBhandler::convert_string(Tstate value) {
     switch( value ) {
     case Tstate::ENUM_TRIG:
@@ -710,6 +732,75 @@ std::string CDBhandler::convert_string(Tstate value) {
 template<typename T>
 std::string CDBhandler::convert_string(T value) {
     return std::to_string(value);
+}
+
+std::string CDBhandler::get_value_context(Tkey key, std::string& value) {
+    try {
+        switch( key ) {
+        case Tkey::ENUM_ID:
+        case Tkey::ENUM_MSG_ID:
+        case Tkey::ENUM_PERIOD:
+        case Tkey::ENUM_WHEN:
+            return value;
+        case Tkey::ENUM_UUID:
+        case Tkey::ENUM_FIRSTWHEN:
+        case Tkey::ENUM_HOW:
+        case Tkey::ENUM_PAYLOAD:
+        case Tkey::ENUM_PERIOD_TYPE:
+        case Tkey::ENUM_STATE:
+        case Tkey::ENUM_WHAT:
+        case Tkey::ENUM_WHEN_TEXT:
+        case Tkey::ENUM_WHERE:
+        case Tkey::ENUM_WHO:
+            return "'" + value + "'";
+        default:
+            {
+                std::string err = "Not Supported key(" + std::to_string(static_cast<uint16_t>(key)) + ")";
+                throw std::out_of_range(err);
+            }
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void CDBhandler::update_record_raw(Ttype db_type, const char* table_name, 
+                                   Tkey cond_key, std::string& cond_val, 
+                                   Tkey target_key, std::string& target_val) {
+    try {
+        std::string table;
+        std::string context;
+        std::string key_cond;
+        std::string key_tar;
+
+        if( table_name == NULL ) {
+            throw std::invalid_argument("Table Name is NULL.");
+        }
+
+        if( cond_val.empty() == true ) {
+            throw std::invalid_argument("Condition-value is NULL");
+        }
+
+        table = std::string(table_name);
+        auto& db_inst = get_db_instance(db_type);
+
+        // make context
+        key_cond = _gm_key_names_all_.find(cond_key)->second;
+        key_tar = _gm_key_names_all_.find(target_key)->second;
+        context = table + " SET " + key_tar + " = " + target_val + " WHERE " + key_cond + " = " + cond_val;
+        
+        // query context
+        if( db_inst->query_update( context ) != SQLITE_OK ) {
+            std::string err = "query_update is failed. (UPDATE " + context + ")";
+            throw std::runtime_error(err);
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 

@@ -70,9 +70,22 @@ public:
 
     void insert_record(Ttype db_type, const char* table_name, std::shared_ptr<cmd::ICommand>& cmd);
 
+    void remove_record(Ttype db_type, const char* table_name, std::shared_ptr<Trecord>& record);
+
     void remove_record(Ttype db_type, const char* table_name, const std::string uuid);
 
-    // void update_record(Ttype db_type, const char* table_name, );
+    template<typename TC, typename TU>
+    void update_record(Ttype db_type, const char* table_name, 
+                       Tkey cond_key, TC cond_val, 
+                       Tkey update_key, TU update_val) {
+        std::string scond_val = convert_string<TC>( cond_val );
+        std::string supdate_val = convert_string<TU>( update_val );
+
+        scond_val = get_value_context(cond_key, scond_val);
+        supdate_val = get_value_context(update_key, supdate_val);
+
+        update_record_raw(db_type, table_name, cond_key, scond_val, update_key, supdate_val);
+    }
 
     // getter
     std::shared_ptr<TVrecord> get_records(Ttype db_type, const char* table_name, 
@@ -99,6 +112,12 @@ private:
 
     template<typename T>
     static std::string convert_string(T value);
+
+    std::string get_value_context(Tkey key, std::string& value);
+
+    void update_record_raw(Ttype db_type, const char* table_name, 
+                           Tkey cond_key, std::string& cond_val, 
+                           Tkey update_key, std::string& update_val);
 
 public:
     #define TABLE_EVENT     "EventBase"

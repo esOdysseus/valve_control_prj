@@ -108,7 +108,7 @@ public:
     virtual std::shared_ptr<payload::CPayload> encode( std::shared_ptr<ICommunicator>& handler );
 
     // getter
-    virtual unsigned long get_id(void) {    return 0;   };
+    virtual uint32_t get_id(void) {    return 0;   };
 
     virtual FlagType get_flag(FlagType pos=common::E_FLAG::E_FLAG_ALL) { return common::E_FLAG::E_FLAG_NONE; };
 

@@ -46,7 +46,7 @@ public:
                                                             FlagType flag, common::StateType state, uint32_t& msg_id );
 
     // getter
-    unsigned long get_id(void) override { return _msg_id_; }
+    uint32_t get_id(void) override { return _msg_id_; }
 
     FlagType get_flag(FlagType pos=E_FLAG::E_FLAG_ALL) override;
 
@@ -55,7 +55,7 @@ public:
     double get_send_time(void) { return _send_time_d_; }
 
     // setter
-    void set_id(unsigned long value);
+    void set_id(uint32_t value);
 
     void set_flag(E_FLAG pos, FlagType value=0);
 

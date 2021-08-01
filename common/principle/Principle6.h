@@ -101,10 +101,7 @@ public:
 
     std::string get_time(void);
 
-    // reference function.
-    static double get_next_week( double base_time, TEweek week, uint32_t period );
-
-    static double get_next_day( double base_time, uint32_t period );
+    double get_next_period( double base_time );
 
 private:
     CWhen(void) = delete;
@@ -122,6 +119,11 @@ private:
                                              TEweek week, 
                                              uint32_t period,
                                              double latency);
+
+    // reference function.
+    static double get_next_week( double base_time, TEweek week, uint32_t period );
+
+    static double get_next_day( double base_time, uint32_t period );
 
 private:
     std::map<std::string/*type*/, TFcalc> _mm_func_;
