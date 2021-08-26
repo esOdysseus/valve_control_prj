@@ -357,7 +357,7 @@ bool CScheduler::process_now_space( std::shared_ptr<cmd::ICommand>& cmd ) {
                              Tdb::Tkey::ENUM_MSG_ID, msg_id, 
                              Tdb::Tkey::ENUM_STATE, state);
 
-        // Move record from NOW-db to PAST-db.
+        // If Action is Done/Fail, then move record from NOW-db to PAST-db.
         if( state == Tdb::Tstate::ENUM_FAIL || state == Tdb::Tstate::ENUM_DONE ) {
             auto records = _m_db_.get_records(Tdb::Ttype::ENUM_NOW, Tdb::DB_TABLE_EVENT, lamda_make_condition, nullptr);
             auto itr = records->begin();
@@ -415,8 +415,8 @@ void CScheduler::process_future_space( std::shared_ptr<cmd::ICommand>& rcmd ) {
         LOGD("who=%s/%s", app_path.data(), pvd_id.data());
         LOGD("when=%s", t_when.data());
         LOGD("where=%s", rcmd->where().get_type().data());
-        LOGD("what=%s_%d", rcmd->what().get_type().data(), rcmd->what().get_which());
-        LOGD("how=%s", rcmd->how().get_method().data());
+        LOGD("what=%s", rcmd->what().get_type().data());
+        LOGD("how=%s", rcmd->how().get_type().data());
 
         // Check whether CMD is completed Task-Pair case, or not.
         // If CMD is in-completed Task-Pair case, then throw Exception.

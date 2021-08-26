@@ -162,6 +162,30 @@ bool CDBhandler::convert_record_to_event(Ttype db_type, Trecord& record, double 
 std::shared_ptr<CDBhandler::Trecord> CDBhandler::make_base_record(std::shared_ptr<cmd::ICommand>& cmd) {
     std::shared_ptr<CDBhandler::Trecord> record;
 
+    auto lamda_get_what = [&](void) -> std::string {
+        std::string type = cmd->what().get_type();
+        if( type == ::principle::CWhat::TYPE_VALVE ) {
+            return type + " " + std::to_string( cmd->what().valve_which() );
+        } else if( type == ::principle::CWhat::TYPE_DB ) {
+            return type + " " + ::principle::type_convert( cmd->what().db_type() );
+        } else {
+            std::string err = "Not Supported What-Type=" + type;
+            throw std::logic_error(err);
+        }
+    };
+
+    auto lamda_get_how = [&](void) -> std::string {
+        std::string type = cmd->how().get_type();
+        if( type == ::principle::CHow::TYPE_VALVE ) {
+            return type + " " + ::principle::type_convert( cmd->how().valve_method_pre() );
+        } else if( type == ::principle::CHow::TYPE_DB ) {
+            return type + " " + ::principle::type_convert( cmd->how().db_method() );
+        } else {
+            std::string err = "Not Supported How-Type=" + type;
+            throw std::logic_error(err);
+        }
+    };
+
     try {
         if( cmd.get() == NULL ) {
             throw std::invalid_argument("cmd is NULL. please check it.");
@@ -177,8 +201,8 @@ std::shared_ptr<CDBhandler::Trecord> CDBhandler::make_base_record(std::shared_pt
         (*record)[KEY_WHEN] = std::to_string(cmd->when().get_start_time());
         (*record)[KEY_WHEN_TEXT] = cmd->when().get_date() + " " + cmd->when().get_time();
         (*record)[KEY_WHERE] = cmd->where().get_type();
-        (*record)[KEY_WHAT] = cmd->what().get_type() + " " + std::to_string( cmd->what().get_which() );
-        (*record)[KEY_HOW] = cmd->how().get_method();
+        (*record)[KEY_WHAT] = lamda_get_what();
+        (*record)[KEY_HOW] = lamda_get_how();
         (*record)[KEY_PAYLOAD] = cmd->get_payload();
         (*record)[KEY_UUID] = (*record)[KEY_WHO] + "@" + (*record)[KEY_WHEN_TEXT] + "@" + (*record)[KEY_WHERE] + "@" + (*record)[KEY_WHAT] + "@" + (*record)[KEY_HOW];
     }
@@ -218,7 +242,8 @@ void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::share
             throw std::logic_error(err);
         }
 
-        context = itr_maker->second(nullptr, record);
+        std::shared_ptr<cmd::ICommand> dumy;
+        context = itr_maker->second(dumy, record);
         db_inst->query_insert(table + context);
     }
     catch( const std::exception& e ) {
@@ -254,7 +279,8 @@ void CDBhandler::insert_record(Ttype db_type, const char* table_name, std::share
             throw std::logic_error(err);
         }
 
-        context = itr_maker->second(cmd, nullptr);
+        std::shared_ptr<Trecord> dumy;
+        context = itr_maker->second(cmd, dumy);
         db_inst->query_insert(table + context);
     }
     catch( const std::exception& e ) {

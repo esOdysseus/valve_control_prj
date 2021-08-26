@@ -34,21 +34,47 @@
         }
     },
     'where': {
-        'type': 'string',           // valid-values : [ 'center.gps', 'unknown', 'dont.care' ]
-        'gps': {                    // center.gps일때, 장소의 중심 좌표만 기록한다.
+        'type': 'string',           // valid-values : [ 'center.gps', 'unknown', 'dont.care', 'db' ]
+        'contents': {               // center.gps : 일때, 장소의 중심 좌표만 기록한다.
             'long': 'double',
             'lat': 'double'
         }
+        'contents': {               // db : DataBase의 type/path/table 로 정확한 DB상의 위치를 나타낸다.
+            'type': 'SQL',          // valid-values : [ 'SQL', 'NOSQL' ]
+            'path': '/db/path/db-test.db',
+            'table': 'DB_TABLE_EVENT',
+        }
     },
     'what': {
-        'type': 'string',           // valid-values : [ 'valve.swc' ]
-        'seq': 'uint32_t'           // valve.swc일때, 어떤 switch를 선택할지를 나타낸다.
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'contents': {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
+            'seq': 'uint32_t'
+        }
+        'contents': {               // db : DataBase에 Insert/Update//Select/Delete 할 대상을 명시한다.
+                                    //      Select/Delete에선, 대상이 없으므로 'none'이 된다.
+            'type': 'elements',     // valid-values : [ 'records', 'elements', 'none' ]
+            'target': {
+                '1': {
+                    'key01': 'value01',
+                    'key02': 'value02'
+                }
+            }
+        }
     },
     'how': {
-        'method-pre': 'open',       // valid-values : [ open , close ]
-        'costtime': 'double',       // valid-values : seconds + point value
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'contents': {               // valve.swc : 일때, Action의 Start~Stop까지 묶어준다.
+            'method-pre': 'open',   // valid-values : [ open , close, none ]
+            'costtime': 'double',   // valid-values : seconds + point value
                                     //                0.0 : when method is close
-        'method-post': 'close'      // valid-values : [ open , close, none ]
+            'method-post': 'close'  // valid-values : [ open , close, none ]
+        }
+        'contents': {               // db : DataBase에 what을 어떻게 적용할지를 명시한다.
+            'method': 'update',     // valid-values : [ 'select', 'delete', 'insert', 'update' ]
+            'condition': {
+                '1': 'string'       // 'string' 한개는 What의 'contents.target' 1개와 동일한 key 위치에서 pair가 된다.
+            }
+        }
     },
     'why': {                        // Optional
         'desp': 'string',

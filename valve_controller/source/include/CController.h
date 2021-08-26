@@ -37,6 +37,9 @@ public:
     };
 
 private:
+    using Tvalve_method = ::principle::Tvalve_method;
+    using Tdb_method = ::principle::Tdb_method;
+
     static constexpr const char* OPEN = "open";
     static constexpr const char* CLOSE = "close";
     

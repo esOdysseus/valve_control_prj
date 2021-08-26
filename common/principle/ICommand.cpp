@@ -29,13 +29,16 @@ static std::string JKEY_WHEN_PERIOD        = "period";
 static std::string JKEY_WHEN_DATE          = "date";
 static std::string JKEY_WHERE              = "where";
 static std::string JKEY_WHERE_TYPE         = "type";
-static std::string JKEY_WHERE_GPS          = "gps";
+static std::string JKEY_WHERE_CONTENTS     = "contents";
 static std::string JKEY_WHERE_GPS_LONG     = "long";
 static std::string JKEY_WHERE_GPS_LAT      = "lat";
 static std::string JKEY_WHAT               = "what";
 static std::string JKEY_WHAT_TYPE          = "type";
+static std::string JKEY_WHAT_CONTENTS      = "contents";
 static std::string JKEY_WHAT_SEQ           = "seq";
 static std::string JKEY_HOW                = "how";
+static std::string JKEY_HOW_TYPE           = "type";
+static std::string JKEY_HOW_CONTENTS       = "contents";
 static std::string JKEY_HOW_METHOD         = "method-pre";
 static std::string JKEY_HOW_METHOD_POST    = "method-post";
 static std::string JKEY_HOW_COSTTIME       = "costtime";
@@ -67,21 +70,47 @@ static std::string JKEY_WHY_DEP            = "dependency";
         }
     },
     'where': {
-        'type': 'string',           // valid-values : [ 'center.gps', 'unknown' ]
-        'gps': {                    // center.gps일때, 장소의 중심 좌표만 기록한다.
+        'type': 'string',           // valid-values : [ 'center.gps', 'unknown', 'dont.care', 'db' ]
+        'contents': {               // center.gps : 일때, 장소의 중심 좌표만 기록한다.
             'long': 'double',
             'lat': 'double'
         }
+        'contents': {               // db : DataBase의 type/path/table 로 정확한 DB상의 위치를 나타낸다.
+            'type': 'SQL',          // valid-values : [ 'SQL', 'NOSQL' ]
+            'path': '/db/path/db-test.db',
+            'table': 'DB_TABLE_EVENT',
+        }
     },
     'what': {
-        'type': 'string',           // valid-values : [ 'valve.swc' ]
-        'seq': 'uint32_t'           // valve.swc일때, 어떤 switch를 선택할지를 나타낸다.
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'contents': {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
+            'seq': 'uint32_t'
+        }
+        'contents': {               // db : DataBase에 Insert/Update//Select/Delete 할 대상을 명시한다.
+                                    //      Select/Delete에선, 대상이 없으므로 'none'이 된다.
+            'type': 'elements',     // valid-values : [ 'records', 'elements', 'none' ]
+            'target': {
+                '1': {
+                    'key01': 'value01',
+                    'key02': 'value02'
+                }
+            }
+        }
     },
     'how': {
-        'method-pre': 'open',       // valid-values : [ open , close ]
-        'costtime': 'double',       // valid-values : seconds + point value
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'contents': {               // valve.swc : 일때, Action의 Start~Stop까지 묶어준다.
+            'method-pre': 'open',   // valid-values : [ open , close, none ]
+            'costtime': 'double',   // valid-values : seconds + point value
                                     //                0.0 : when method is close
-        'method-post': 'close'      // valid-values : [ open , close, none ]
+            'method-post': 'close'  // valid-values : [ open , close, none ]
+        }
+        'contents': {               // db : DataBase에 what을 어떻게 적용할지를 명시한다.
+            'method': 'update',     // valid-values : [ 'select', 'delete', 'insert', 'update' ]
+            'condition': {
+                '1': 'string'       // 'string' 한개는 What의 'contents.target' 1개와 동일한 위치에서 pair가 된다.
+            }
+        }
     },
     'why': {                        // Optional
         'desp': 'string',
@@ -209,8 +238,16 @@ void ICommand::set_when( std::string type, double start_time,
 }
 
 void ICommand::set_how( std::string method, std::string post_method, double costtime ) {
-    _how_.reset();
-    _how_ = std::make_shared<Thow>(method, post_method, costtime);
+    try {
+        _how_.reset();
+        auto method_pre = principle::type_convert<principle::Tvalve_method>(method);
+        auto method_post = principle::type_convert<principle::Tvalve_method>(post_method);
+        _how_ = std::make_shared<Thow>(Thow::TYPE_VALVE, method_pre, costtime, method_post);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 // compare time
@@ -489,9 +526,8 @@ bool ICommand::apply_when(Json_DataType &json, std::shared_ptr<Twhen>& value) {
 
 std::shared_ptr<ICommand::Twhere> ICommand::extract_where(Json_DataType &json) {
     std::string type;
-    double longitude = Twhere::GPS_NULL;
-    double latitude = Twhere::GPS_NULL;
     std::shared_ptr<Twhere> result;
+    Json_DataType json_sub;
     assert(json.get() != NULL);
 
     try {
@@ -500,12 +536,9 @@ std::shared_ptr<ICommand::Twhere> ICommand::extract_where(Json_DataType &json) {
         assert( objects.get() != NULL );
         type = objects->get_member(JKEY_WHERE_TYPE);
 
-        // get value.
-        auto sub_obj = objects->get_member<Json_DataType>(JKEY_WHERE_GPS);
-        longitude = sub_obj->get_member<double>(JKEY_WHERE_GPS_LONG);
-        latitude = sub_obj->get_member<double>(JKEY_WHERE_GPS_LAT);
-
-        result = std::make_shared<Twhere>(type, longitude, latitude);
+        // get contents.
+        json_sub = objects->get_member<Json_DataType>(JKEY_WHERE_CONTENTS);
+        result = std::make_shared<Twhere>(type, json_sub);
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -522,13 +555,7 @@ bool ICommand::apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value) 
     try {
         json_sub = json->set_member(JKEY_WHERE);
         assert( json_sub->set_member(JKEY_WHERE_TYPE, value->get_type()) == true );
-
-        if( value->get_gps_long() != Twhere::GPS_NULL && value->get_gps_lat() != Twhere::GPS_NULL ) {
-            Json_DataType json_sub2 = json_sub->set_member(JKEY_WHERE_GPS);
-            assert( json_sub2->set_member(JKEY_WHERE_GPS_LONG, value->get_gps_long()) == true );
-            assert( json_sub2->set_member(JKEY_WHERE_GPS_LAT, value->get_gps_lat()) == true );
-            json_sub->set_member(JKEY_WHERE_GPS, json_sub2.get());
-        }
+        json_sub->set_member(JKEY_WHERE_CONTENTS, value->encode().get());
         json->set_member(JKEY_WHERE, json_sub.get());
         return true;
     }
@@ -542,17 +569,26 @@ bool ICommand::apply_where(Json_DataType &json, std::shared_ptr<Twhere>& value) 
 
 std::shared_ptr<ICommand::Twhat> ICommand::extract_what(Json_DataType &json) {
     std::string type;
-    int seq_num = -1;
+    std::shared_ptr<Twhat> result;
+    Json_DataType json_sub;
     assert(json.get() != NULL);
 
-    // check validation.
-    auto objects = json->get_member<Json_DataType>(JKEY_WHAT);
-    assert( objects.get() != NULL );
-    type = objects->get_member(JKEY_WHAT_TYPE);
+    try {
+        // check validation.
+        auto objects = json->get_member<Json_DataType>(JKEY_WHAT);
+        assert( objects.get() != NULL );
+        type = objects->get_member(JKEY_WHAT_TYPE);
 
-    // get value.
-    seq_num = objects->get_member<int>(JKEY_WHAT_SEQ);
-    return std::make_shared<Twhat>(type, seq_num);
+        // get contents.
+        json_sub = objects->get_member<Json_DataType>(JKEY_WHAT_CONTENTS);
+        result = std::make_shared<Twhat>(type, json_sub);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
 }
 
 bool ICommand::apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value) {
@@ -562,7 +598,7 @@ bool ICommand::apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value) {
     try {
         json_sub = json->set_member(JKEY_WHAT);
         assert( json_sub->set_member(JKEY_WHAT_TYPE, value->get_type()) == true );
-        assert( json_sub->set_member(JKEY_WHAT_SEQ, value->get_which()) == true );
+        json_sub->set_member(JKEY_WHAT_CONTENTS, value->encode().get());
         json->set_member(JKEY_WHAT, json_sub.get());
         return true;
     }
@@ -575,17 +611,27 @@ bool ICommand::apply_what(Json_DataType &json, std::shared_ptr<Twhat>& value) {
 }
 
 std::shared_ptr<ICommand::Thow> ICommand::extract_how(Json_DataType &json) {
+    std::string type;
+    std::shared_ptr<Thow> result;
+    Json_DataType json_sub;
     assert(json.get() != NULL);
 
-    // get method
-    auto objects = json->get_member<Json_DataType>(JKEY_HOW);
-    assert( objects.get() != NULL );
-    auto method = objects->get_member(JKEY_HOW_METHOD);
-    auto method_post = objects->get_member(JKEY_HOW_METHOD_POST);
-    
-    // get costtime
-    auto cost_time = objects->get_member<double>(JKEY_HOW_COSTTIME);
-    return std::make_shared<Thow>(method, method_post, cost_time);
+    try {
+        // check validation.
+        auto objects = json->get_member<Json_DataType>(JKEY_HOW);
+        assert( objects.get() != NULL );
+        type = objects->get_member(JKEY_HOW_TYPE);
+
+        // get contents.
+        json_sub = objects->get_member<Json_DataType>(JKEY_HOW_CONTENTS);
+        result = std::make_shared<Thow>(type, json_sub);
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
 }
 
 bool ICommand::apply_how(Json_DataType &json, std::shared_ptr<Thow>& value) {
@@ -594,9 +640,8 @@ bool ICommand::apply_how(Json_DataType &json, std::shared_ptr<Thow>& value) {
 
     try {
         json_sub = json->set_member(JKEY_HOW);
-        assert( json_sub->set_member(JKEY_HOW_METHOD, value->get_method()) == true );
-        assert( json_sub->set_member(JKEY_HOW_METHOD_POST, value->get_post_method()) == true );
-        assert( json_sub->set_member(JKEY_HOW_COSTTIME, value->get_costtime()) == true );
+        assert( json_sub->set_member(JKEY_HOW_TYPE, value->get_type()) == true );
+        json_sub->set_member(JKEY_HOW_CONTENTS, value->encode().get());
         json->set_member(JKEY_HOW, json_sub.get());
         return true;
     }

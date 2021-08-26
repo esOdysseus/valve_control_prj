@@ -47,6 +47,7 @@ INCLUDEPATH += \
 
 
 SOURCES += \
+    $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)   \
     $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp) \

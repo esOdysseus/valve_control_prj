@@ -5,6 +5,10 @@
 #include <string>
 #include <functional>
 #include <time_kes.h>
+#include <iostream>
+
+#include <json_manipulator.h>
+#include <contents/Contents.h>
 
 namespace principle {
 
@@ -140,109 +144,204 @@ private:
 
 };
 
+
+class HContentsBase {
+public:
+    HContentsBase(void) = default;
+
+    virtual ~HContentsBase(void) {
+        _type_.clear();
+        _m_contents_.reset();
+    }
+
+    std::string get_type(void) {
+        return _type_;
+    }
+
+    Json_DataType encode( void ) {
+        Json_DataType result;
+        if( _m_contents_.get() != NULL ) {
+            result = _m_contents_->encode();
+        }
+        return result;
+    }
+
+protected:
+    std::string _type_;
+    std::shared_ptr<IBaseContents> _m_contents_;
+
+};
+
 /*****************
  * Where Class
  */
-class CWhere {
+class CWhere: public HContentsBase {
 public:
-    static constexpr const double GPS_NULL = -1.0;
+    static constexpr const double   GPS_NULL = -1.0;
+    static constexpr const char*    TYPE_GPS = "center.gps";
+    static constexpr const char*    TYPE_DB = "db";
+    static constexpr const char*    TYPE_UNKNOWN = "unknown";
+    static constexpr const char*    TYPE_NOTCARE = "dont.care";
 
 public:
-    CWhere( std::string type, double gps_long=GPS_NULL, double gps_lat=GPS_NULL ) {
-        _type_ = type;
-        _gps_long_ = gps_long;
-        _gps_lat_ = gps_lat;
-    }
+    CWhere( std::string type, Json_DataType &json );
 
-    ~CWhere( void ) {
-        _type_.clear();
-        _gps_long_ = GPS_NULL;
-        _gps_lat_ = GPS_NULL;
-    }
+    CWhere( std::string type, double gps_long, double gps_lat );
 
-    std::string get_type(void) { return _type_; }
+    CWhere( std::string type, Tdb_type db_type, std::string db_path, std::string db_table );
 
-    double get_gps_long(void) { return _gps_long_; }
+    CWhere( std::string type );
 
-    double get_gps_lat(void) { return _gps_lat_; }
+    ~CWhere( void ) = default;
+
+    /** GPS-API functions. */
+    double& gps_longitude(void);
+
+    double& gps_latitude(void);
+
+    /** DB-API functions. */
+    Tdb_type& db_type(void);
+
+    std::string& db_path(void);
+
+    std::string& db_table(void);
 
 private:
     CWhere(void) = delete;
 
-private:
-    std::string _type_;
-    double _gps_long_;
-    double _gps_lat_;
+    template<cWhereGPS::Tcontents T>
+    auto get_ref_gps(void) -> typename std::add_lvalue_reference< decltype(cWhereGPS::Ttype<T>()) >::type {
+        if( _type_ != TYPE_GPS ) {
+            throw std::out_of_range("Not Supported GPS-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cWhereGPS>(_m_contents_);
+        return contents->get<T>();
+    }
+
+    template<cWhereDB::Tcontents T>
+    auto get_ref_db(void) -> typename std::add_lvalue_reference< decltype(cWhereDB::Ttype<T>()) >::type {
+        if( _type_ != TYPE_DB ) {
+            throw std::out_of_range("Not Supported DB-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cWhereDB>(_m_contents_);
+        return contents->get<T>();
+    }
 
 };
 
 /*****************
  * What Class
  */
-class CWhat {
+class CWhat: public HContentsBase {
 public:
-    static constexpr const int WHICH_NULL = -1;
+    static constexpr const int      WHICH_NULL = -1;
+    static constexpr const char*    TYPE_VALVE = "valve.swc";
+    static constexpr const char*    TYPE_DB = "db";
+
+    using TDtype = std::map< std::string, std::shared_ptr<std::map<std::string, std::string>> >;
 
 public:
-    CWhat( std::string type, int which ) {
-        _type_ = type;
-        _which_ = which;
-    }
+    CWhat( std::string type, Json_DataType &json );
 
-    ~CWhat( void ) {
-        _type_.clear();
-        _which_ = WHICH_NULL;
-    }
+    CWhat( std::string type, int which );
 
-    std::string get_type(void) {    return _type_;  }
+    CWhat( std::string type, Tdb_data data_type, TDtype& data );
 
-    int get_which(void) { return _which_; }
+    ~CWhat(void) = default;
+
+    /** VALVE-API functions. */
+    uint32_t& valve_which(void);
+
+    /** DB-API functions. */
+    Tdb_data& db_type(void);
+
+    TDtype& db_target(void);
 
 private:
     CWhat(void) = delete;
 
-private:
-    std::string _type_;
-    int _which_;
+    template<cWhatVALVE::Tcontents T>
+    auto get_ref_valve(void) -> typename std::add_lvalue_reference< decltype(cWhatVALVE::Ttype<T>()) >::type {
+        if( _type_ != TYPE_VALVE ) {
+            throw std::out_of_range("Not Supported VALVE-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cWhatVALVE>(_m_contents_);
+        return contents->get<T>();
+    }
+
+    template<cWhatDB::Tcontents T>
+    auto get_ref_db(void) -> typename std::add_lvalue_reference< decltype(cWhatDB::Ttype<T>()) >::type {
+        if( _type_ != TYPE_DB ) {
+            throw std::out_of_range("Not Supported DB-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cWhatDB>(_m_contents_);
+        return contents->get<T>();
+    }
 
 };
 
 /*****************
  * How Class
  */
-class CHow {
+class CHow: public HContentsBase {
 public:
-    static constexpr const double COSTTIME_NULL = -1.0;
-    static constexpr const char* METHOD_NULL = "none";
+    static constexpr const double   COSTTIME_NULL = -1.0;
+    static constexpr const char*    METHOD_NULL = "none";
+    static constexpr const char*    TYPE_VALVE = "valve.swc";
+    static constexpr const char*    TYPE_DB = "db";
+
+    using TDtype = std::map<std::string, std::string>;
 
 public:
-    CHow( std::string method, std::string method_post=METHOD_NULL, double cost_time=COSTTIME_NULL ) {
-        _method_ = method;
-        _post_method_ = method_post;
-        _cost_time_ = cost_time;
-    }
+    CHow( std::string type, Json_DataType &json );
 
-    ~CHow( void ) {
-        _method_.clear();
-        _post_method_.clear();
-        _cost_time_ = COSTTIME_NULL;
-    }
+    CHow( std::string type, Tvalve_method method_pre, double costtime, Tvalve_method method_post );
 
-    std::string get_method(void) {    return _method_;  }
+    CHow( std::string type, Tdb_method method, TDtype& condition );
 
-    double get_costtime(void) { return _cost_time_; }
+    ~CHow(void) = default;
 
-    std::string get_post_method(void) {    return _post_method_;  }
+    /** VALVE-API functions. */
+    Tvalve_method& valve_method_pre(void);
+
+    double& valve_costtime(void);
+
+    Tvalve_method& valve_method_post(void);
+
+    /** DB-API functions. */
+    Tdb_method& db_method(void);
+
+    TDtype& db_condition(void);
 
 private:
     CHow(void) = delete;
 
-private:
-    std::string _method_;
-    std::string _post_method_;
-    double _cost_time_;         // desp: It's that cost time for operating of method. after that post-method is operated.
+    template<cHowVALVE::Tcontents T>
+    auto get_ref_valve(void) -> typename std::add_lvalue_reference< decltype(cHowVALVE::Ttype<T>()) >::type {
+        if( _type_ != TYPE_VALVE ) {
+            throw std::out_of_range("Not Supported VALVE-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cHowVALVE>(_m_contents_);
+        return contents->get<T>();
+    }
+
+    template<cHowDB::Tcontents T>
+    auto get_ref_db(void) -> typename std::add_lvalue_reference< decltype(cHowDB::Ttype<T>()) >::type {
+        if( _type_ != TYPE_DB ) {
+            throw std::out_of_range("Not Supported DB-API.");
+        }
+
+        auto contents = std::dynamic_pointer_cast<cHowDB>(_m_contents_);
+        return contents->get<T>();
+    }
 
 };
+
 
 
 }   // principle
