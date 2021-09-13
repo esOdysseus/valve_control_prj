@@ -37,6 +37,7 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT \
     $$COMMON_LIB_ROOT/principle   \
     $$COMMON_LIB_ROOT/lib/json    \
+    $$COMMON_LIB_ROOT/lib/lock    \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot \
     $$COMMON_LIB_ROOT/lib/time
