@@ -15,6 +15,7 @@
 #include <ICommand.h>
 #include <CMDs/CuCMD.h>
 #include <Common.h>
+#include <CMDs/CTimeSync.h>
 
 namespace comm {
 
@@ -44,6 +45,9 @@ public:
     void start( void );
 
     /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
+    uint32_t keepalive( const alias::CAlias& peer, const std::string& data, common::StateType state );
+
+    /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
     uint32_t request( const alias::CAlias& peer, const std::string& json_cmd, common::StateType state, bool require_resp=true );
 
     // bool send_cmd_done(std::shared_ptr<CMDType> &cmd);
@@ -60,7 +64,7 @@ private:
 
     std::shared_ptr<TCommList> get_comms( std::string& peer_app, std::string& peer_pvd, std::string proto_name );
 
-    // void apply_sys_state(std::shared_ptr<CMDType> cmd);
+    void apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd);
 
     bool send( std::shared_ptr<CMDType> &cmd );
 
@@ -84,32 +88,16 @@ private:
 
     void cb_abnormally_quit(const std::exception &e, std::string pvd_id);
 
-    /****
-     * Thread related functions
-     */
-    void create_threads(void);
-    
-    void destroy_threads(void);
-
-    int run_keepalive(void);    // Keep-Alive react routin.
-
 private:
     std::shared_ptr<alias::CAlias> _m_myself_;    // MCommunicator state
+
+    std::shared_ptr<::cmd::CTimeSync> _m_time_synchor_;
 
     std::shared_ptr<alias::IAliasSearcher> _m_alias_searcher_;
 
     TCommMapper _mm_comm_;          // multi-communicator
 
     TListenMapper _mm_listener_;    // multi-listener per provider-id.
-
-    // Thread routine variables
-    std::atomic<bool> _m_is_continue_;       // Thread continue-flag.
-
-    std::thread _mt_keepaliver_; // Periodically, Thread that is charge of reacting Keep-Alive message.
-
-    std::list<std::shared_ptr<alias::CAlias>> _ml_peers_;     // Connected Peer-list. (for keep-alive proc)
-
-    std::mutex _mtx_peers_;
 
 };
 

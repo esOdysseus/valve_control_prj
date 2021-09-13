@@ -176,13 +176,13 @@ void CController::execute_cmds(std::shared_ptr<CMDlistType> &cmds) {
             // Act valve-command with power enable.
             LOGD("Power Enable & Act Valve-cmd.");
             if( execute_valve_cmd(valve_cmd, E_PWR::E_PWR_ENABLE) != true ) {
-                LOGERR("Executing valve-command is failed.");
+                throw std::runtime_error("Executing valve-command is failed.");
             }
 
             // Stop action of valve-command by power disable.
             LOGD("Try creating thread.");
             h_thread = std::thread([this](std::shared_ptr<CMDType> cmd) {
-                LOGD("Success Creating thread.");
+                LOGD("Success Creating PWR_DISABLE thread.");
                 uint32_t wait_sec = 1;
                 auto& method = cmd->how().valve_method_pre();
 
@@ -257,6 +257,8 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
                 LOGERR("Can not send ACT-Start message.");
                 throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_START);
             }
+
+            // TODO if need it, then we have to send ACT_DONE message to server.
         }
     }
     catch (const std::exception &e) {

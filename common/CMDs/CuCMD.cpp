@@ -82,27 +82,29 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
             // parsing when time.
             _send_time_d_ = std::stod(protocol->get_property("when"));
 
-            if( payload != NULL && payload_size > 0 ) {
-                // parsing json payload (where, what, how, why)
-                Json_DataType json_manager;
-                json_manager = std::make_shared<json_mng::CMjson>();
-                LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
-                assert( json_manager->parse(payload, payload_size) == true);
+            if( get_flag(E_FLAG::E_FLAG_KEEPALIVE) == 0 ) {
+                if( payload != NULL && payload_size > 0 ) {
+                    // parsing json payload (where, what, how, why)
+                    Json_DataType json_manager;
+                    json_manager = std::make_shared<json_mng::CMjson>();
+                    LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
+                    assert( json_manager->parse(payload, payload_size) == true);
 
-                // check UniversalCMD version.
-                auto ver = extract_version(json_manager);
-                if( ver != version() ) {
-                    std::string err = "VERSION(" + ver + ") of json-context != " + version();
-                    throw std::invalid_argument(err);
+                    // check UniversalCMD version.
+                    auto ver = extract_version(json_manager);
+                    if( ver != version() ) {
+                        std::string err = "VERSION(" + ver + ") of json-context != " + version();
+                        throw std::invalid_argument(err);
+                    }
+                    // parse principle-6.
+                    _who_ = extract_who(json_manager);
+                    _when_ = extract_when(json_manager, _send_time_d_);
+                    _where_ = extract_where(json_manager);
+                    _what_ = extract_what(json_manager);
+                    _how_ = extract_how(json_manager);
+                    _why_ = extract_why(json_manager);
+                    LOGD( "Success parse of Json buffer." );
                 }
-                // parse principle-6.
-                _who_ = extract_who(json_manager);
-                _when_ = extract_when(json_manager, _send_time_d_);
-                _where_ = extract_where(json_manager);
-                _what_ = extract_what(json_manager);
-                _how_ = extract_how(json_manager);
-                _why_ = extract_why(json_manager);
-                LOGD( "Success parse of Json buffer." );
             }
 
             // mark receive-time of this packet using my-system time.
@@ -128,6 +130,10 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
     }
 
     try {
+        if( get_flag(E_FLAG::E_FLAG_KEEPALIVE) != 0 ) {
+            throw std::logic_error("Can not support encoding about KEEPALIVE's payload.");
+        }
+
         message = handler->create_payload();
         if( message.get() == NULL ) {
             throw std::logic_error("Message-Creating is failed.");
@@ -143,8 +149,8 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         protocol->set_property("state", _state_);
         protocol->set_property("msg_id", _msg_id_);
 
-        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR) == false && 
-             get_flag(E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE) == false ) {
+        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR) == 0 && 
+             get_flag(E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE) == 0 ) {
             const char* body = NULL;
             Json_DataType json_manager;
 
@@ -205,8 +211,10 @@ std::shared_ptr<payload::CPayload> CuCMD::force_encode( std::shared_ptr<ICommuni
         protocol->set_property("state", state);
         protocol->set_property("msg_id", msg_id);
 
-        if ( (flag & (E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR)) == 0 && 
-             (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE)) == 0 ) {
+        if ( (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR)) == 0 ) {
+            if( payload.empty() == true ) {
+                throw std::invalid_argument("payload is empty.");
+            }
             protocol->set_payload( payload.c_str(), payload.length() );
         }
     }

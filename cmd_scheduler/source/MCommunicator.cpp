@@ -15,7 +15,6 @@ using namespace std::placeholders;
 namespace comm {
 
 
-
 /*********************************
  * Definition of Public Function.
  */
@@ -23,9 +22,14 @@ MCommunicator::MCommunicator( const std::string& app_path, std::string& file_pat
                                                            const TProtoMapper& mapper_pvd_proto ) {
     clear();
     try {
-        _m_myself_ = std::make_shared<alias::CAlias>( app_path, "ALL-PVDs" );
+        _m_myself_ = std::make_shared<alias::CAlias>( app_path, "ALL-PVDs", true );
         if( _m_myself_.get() == NULL ) {
             throw std::runtime_error("Memory-Allication of _m_myself_ is failed.");
+        }
+
+        _m_time_synchor_ = std::make_shared<::cmd::CTimeSync>( _m_myself_, std::bind(&MCommunicator::keepalive,this,_1,_2,_3) );
+        if( _m_time_synchor_.get() == NULL ) {
+            throw std::runtime_error("Memory-Allication of _m_time_synchor_ is failed.");
         }
 
         // Get AliasSearcher
@@ -36,7 +40,6 @@ MCommunicator::MCommunicator( const std::string& app_path, std::string& file_pat
 
         auto pvd_mapper = _m_alias_searcher_->get_mypvds( app_path );
         init( pvd_mapper, file_path_alias, mapper_pvd_proto );
-        create_threads();
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -45,7 +48,6 @@ MCommunicator::MCommunicator( const std::string& app_path, std::string& file_pat
 }
 
 MCommunicator::~MCommunicator(void) {
-    destroy_threads();
     clear();
 }
 
@@ -75,6 +77,59 @@ void MCommunicator::start( void ) {
         LOGERR("%s", e.what());
         throw e;
     }
+}
+
+/* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
+uint32_t MCommunicator::keepalive( const alias::CAlias& peer, const std::string& contents, common::StateType state ) {
+    uint32_t msg_id = 0;
+
+    try {
+        cmd::ICommand::FlagType flag = E_FLAG::E_FLAG_NONE;
+        CommHandler handler;
+        std::string proto = cmd::CuCMD::PROTOCOL_NAME;
+        std::string peer_app = peer.app_path;
+        std::string peer_pvd = peer.pvd_id;
+        std::shared_ptr<payload::CPayload> new_payload;
+
+        // Search communicators that is connected with peer.
+        std::shared_ptr<TCommList> comms_list = get_comms( peer_app, peer_pvd, proto );
+        if( comms_list.get() == NULL ) {
+            throw std::runtime_error("TCommList memory-allocation is failed.");
+        }
+
+        // Validation check.
+        if( comms_list->size() <= 0 ) {
+            std::string err = "Communicator for peer(" + peer_app + "/" + peer_pvd + ") of "+ proto +" Protocol is not exist.";
+            throw std::logic_error(err);
+        }
+
+        if( comms_list->size() > 1 ) {
+            std::string err = "Communicator for peer(" + peer_app + "/" + peer_pvd + ") of "+ proto +" Protocol is over than 1.";
+            throw std::logic_error(err);
+        }
+        handler = *comms_list->begin();
+
+        // Set flag & state variables
+        flag |= E_FLAG::E_FLAG_KEEPALIVE;    // set KEEPALIVE message flag.
+        state |= ::common::E_STATE::E_STATE_THR_KEEPALIVE;
+        state |= _m_myself_->get_state(E_STATE::E_STATE_ALL);
+
+        // Force-encode to packet.
+        new_payload = cmd::CuCMD::force_encode( handler, contents, flag, state, msg_id );
+        if( new_payload.get() == NULL ) {
+            LOGERR("Encoding message is failed for peer(%s/%s) & proto(%s)", peer_app.data(), peer_pvd.data(), proto.data() );
+            throw CException(E_ERROR::E_ERR_FAIL_ENCODING_CMD);
+        }
+
+        // Send message.
+        return handler->send(peer_app, peer_pvd, new_payload);
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        msg_id = 0;
+    }
+    
+    return msg_id;
 }
 
 /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
@@ -113,8 +168,7 @@ uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& j
         if( require_resp == true ) {
             flag |= E_FLAG::E_FLAG_REQUIRE_RESP;    // require ACT-done message.
         }
-        state |= _m_myself_->get_state(E_STATE::E_STATE_OUT_OF_SERVICE); 
-        state |= _m_myself_->get_state(E_STATE::E_STATE_OCCURE_ERROR);
+        state |= _m_myself_->get_state(E_STATE::E_STATE_ALL);
 
         // Force-encode to packet.
         new_payload = cmd::CuCMD::force_encode( handler, json_cmd, flag, state, msg_id );
@@ -146,11 +200,10 @@ uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& j
  */
 void MCommunicator::clear( void ) {
     _m_myself_.reset();
+    _m_time_synchor_.reset();
     _m_alias_searcher_.reset();
     _mm_comm_.clear();
     _mm_listener_.clear();
-    _m_is_continue_ = false;
-    _ml_peers_.clear();
 }
 
 void MCommunicator::init( std::map<std::string, TPvdList>& pvd_mapper, const std::string& alias_file_path, 
@@ -233,9 +286,19 @@ std::shared_ptr<MCommunicator::TCommList> MCommunicator::get_comms( std::string&
     return comms_list;
 }
 
-// void MCommunicator::apply_sys_state(std::shared_ptr<CMDType> cmd) {
-//     ;   // TODO
-// }
+void MCommunicator::apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd) {
+    try {
+        if( cmd.get() == NULL ) {
+            throw std::invalid_argument("CMD is NULL.");
+        }
+
+        cmd->set_state( _m_myself_->get_state(::common::E_STATE::E_STATE_ALL) );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
 
 bool MCommunicator::send( std::shared_ptr<CMDType> &cmd ) {
     try {
@@ -338,30 +401,29 @@ bool MCommunicator::send_without_payload( const alias::CAlias& peer,
                                           unsigned long msg_id, 
                                           std::shared_ptr<ICommunicator>& comm) {
 
-    std::shared_ptr<cmd::CuCMD> simple_msg;
+    std::shared_ptr<cmd::CuCMD> simple_cmd;
     std::shared_ptr<payload::CPayload> new_payload;
     assert( flag == E_FLAG::E_FLAG_ACK_MSG || 
-            flag == E_FLAG::E_FLAG_ACTION_START || 
-            flag == E_FLAG::E_FLAG_KEEPALIVE );
+            flag == E_FLAG::E_FLAG_ACTION_START );
 
     try {
         if( comm.get() == NULL ) {
             throw std::invalid_argument("Comm is NULL.");
         }
 
-        if( flag != E_FLAG::E_FLAG_KEEPALIVE ) {
-            assert( msg_id > 0 );
+        if( msg_id == 0 ) {
+            throw std::logic_error("We need specific msg-id. It's NULL.");
         }
         
         LOGD("Is empty of MySelf? (%u)", _m_myself_->empty());
-        simple_msg = std::make_shared<cmd::CuCMD>(*_m_myself_, flag);
-        // // Check current state & set it to cmd.
-        // apply_sys_state(simple_msg);
+        simple_cmd = std::make_shared<cmd::CuCMD>(*_m_myself_, flag);
+        // Check current state & set it to cmd.
+        apply_sys_state(simple_cmd);
         // Set message-ID.
-        simple_msg->set_id(msg_id);
+        simple_cmd->set_id(msg_id);
 
         // Encode cmd to packet.
-        new_payload = simple_msg->encode( comm );
+        new_payload = simple_cmd->encode( comm );
         if( new_payload.get() == NULL ) {
             LOGERR("Encoding message is failed. Please check it.");
             throw CException(E_ERROR::E_ERR_FAIL_ENCODING_CMD);
@@ -415,19 +477,11 @@ void MCommunicator::cb_connected(std::string peer_app, std::string peer_pvd, boo
     try {
         if( flag_connect == true ) {
             LOGI("Connected Peer. (app-path=%s, pvd-id=%s)", peer_app.data(), peer_pvd.data());
-            auto peer = std::make_shared<alias::CAlias>(peer_app, peer_pvd);
-            std::lock_guard<std::mutex>  guard(_mtx_peers_);
-            _ml_peers_.push_back( peer );
+            _m_time_synchor_->append_peer( peer_app, peer_pvd );
         }
         else {
             LOGI("Disconnected Peer. (app-path=%s, pvd-id=%s)", peer_app.data(), peer_pvd.data());
-            std::lock_guard<std::mutex>  guard(_mtx_peers_);
-            for( auto itr=_ml_peers_.begin(); itr != _ml_peers_.end(); itr++ ) {
-                if( (*itr)->app_path == peer_app && (*itr)->pvd_id == peer_pvd ) {
-                    _ml_peers_.erase(itr);
-                    break;
-                }
-            }
+            _m_time_synchor_->remove_peer( peer_app, peer_pvd );
         }
     }
     catch ( const std::exception& e ) {
@@ -462,15 +516,19 @@ void MCommunicator::cb_receive_msg_handle(std::string peer_app, std::string peer
             throw std::logic_error(err);
         }
 
+        // Processing received KEEPALIVE msg.
         if ( proto_name == cmd::CuCMD::PROTOCOL_NAME ) {
             if( rcmd->get_flag(E_FLAG::E_FLAG_KEEPALIVE) != 0 ) {
                 LOGI("Arrive KeepAlive-message from peer(%s/%s)", peer_app.data(), peer_pvd.data());
-                return;
+                _m_time_synchor_->update_keepalive( std::dynamic_pointer_cast<cmd::CuCMD>(rcmd) );
+                return ;
             }
         }
 
-        // Internal Publishing of CMD-event .to APPs-Listener.
-        call_listeners(pvd_id, rcmd);
+        // Processing received CMD msg. (Publishing CMD-event to APPs-Listener.)
+        if( _m_myself_->get_state(E_STATE::E_STATE_OUT_OF_SERVICE) == 0 ) {
+            call_listeners(pvd_id, rcmd);
+        }
         send_ack( pvd_id , rcmd );  // Send ACK message to peer.
     }
     catch ( const std::exception& e ) {
@@ -482,67 +540,6 @@ void MCommunicator::cb_abnormally_quit(const std::exception &e, std::string pvd_
     LOGERR("pvd-id=%s: %s", pvd_id.data(), e.what());
 }
 
-/****
- * Thread related functions
- */
-void MCommunicator::create_threads(void) {
-    try {
-        if( _m_is_continue_.exchange(true) == false ) {
-            LOGI("Create Keep-Alive thread.");
-            _mt_keepaliver_ = std::thread(&MCommunicator::run_keepalive, this);
-
-            if ( _mt_keepaliver_.joinable() == false ) {
-                _m_is_continue_ = false;
-                _m_myself_->set_state(common::E_STATE::E_STATE_THR_KEEPALIVE, 0);
-                throw std::runtime_error("run_keepalive thread creating is failed.");
-            }
-        }
-    }
-    catch ( const std::exception& e ) {
-        LOGERR("%s", e.what());
-        throw e;
-    }
-}
-
-void MCommunicator::destroy_threads(void) {
-    if( _m_is_continue_.exchange(false) == true ) {
-        if( _mt_keepaliver_.joinable() == true ) {
-            LOGI("Destroy Keep-Alive thread.");     // Destroy of KEEP-ALIVE reacting thread.
-            _mt_keepaliver_.join();
-            _m_myself_->set_state(common::E_STATE::E_STATE_THR_KEEPALIVE, 0);
-        }
-    }
-}
-
-int MCommunicator::run_keepalive(void) {
-    _m_myself_->set_state(common::E_STATE::E_STATE_THR_KEEPALIVE, 1);
-
-    while(_m_is_continue_.load()) {
-        try {
-            {
-                std::lock_guard<std::mutex>  guard(_mtx_peers_);
-                for( auto itr=_ml_peers_.begin(); itr != _ml_peers_.end(); itr++ ) {
-                    auto target = (*itr);
-                    LOGD("target-id=%s/%s", target->app_path.data(), target->pvd_id.data());
-
-                    if( send_without_payload(target, E_FLAG::E_FLAG_KEEPALIVE) == false ) {
-                        LOGW("Sending Keep-Alive message is failed. target=%s/%s", target->app_path.data(), target->pvd_id.data() );
-                    }
-                }
-            }
-
-            // wait 5 seconds
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-        }
-        catch (const std::exception &e) {
-            LOGERR("%s", e.what());
-        }
-    }
-
-    _m_myself_->set_state(common::E_STATE::E_STATE_THR_KEEPALIVE, 0);
-    LOGI("Exit Keep-Alive thread.");
-    return 0;
-}
 
 
 }   // namespace comm

@@ -9,7 +9,7 @@ namespace service {
 
 
 const std::string CScheduler::APP_PATH = "CMD-Scheduler";
-const std::string CScheduler::PVD_COMMANDER = "cmd_tranceiver";
+const std::string CScheduler::PVD_COMMANDER = "cmd_transceiver";
 const std::string CScheduler::PVD_DEBUGGER = "def_debugger";
 
 

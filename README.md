@@ -8,3 +8,5 @@ About each of program, Description is following.
  - valve_controller : It execute command to control valve that command is received from cmd_scheduler.
  
  
+## Environment Variables
+ - MACHINE_DEVICE_NAME : It indicate now H/W machine-name that is shared all of processes on the machine.

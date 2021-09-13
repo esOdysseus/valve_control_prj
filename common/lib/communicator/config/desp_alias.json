@@ -36,7 +36,7 @@
                         "port": "20000"         // port of alias.
                     }
                 },
-                "cmd_tranceiver": {               // name of provider.
+                "cmd_transceiver": {               // name of provider.
                     "provider-type": "tcp",     // available-type : udp, tcp, udp_uds, tcp_uds, vsomeip, iotivity
                     "address": {                // describe address of alias.
                         "ip": "192.168.1.2", // ip of alias that is destination.

@@ -4,8 +4,11 @@
 #include <mutex>
 #include <string>
 #include <iostream>
+#include <shared_mutex_kes.h>
+
 
 namespace common {
+
 
 /*******************************
  * Command(CMD)-format
@@ -25,12 +28,18 @@ typedef enum E_FLAG {
 
 typedef enum E_STATE {
     E_NO_STATE              = 0x0000,
-    E_STATE_THR_GPS         = 0x0001,   // GP-ctrl  -Thread: It indicate place that CMD is triggered.
-    E_STATE_THR_CMD         = 0x0002,   // Service  -Thread: It indicate place that CMD is triggered.
-    E_STATE_THR_KEEPALIVE   = 0x0004,   // KeepAlive-Thread: It indicate place that CMD is triggered.
-    E_STATE_OUT_OF_SERVICE  = 0x0008,   // If Service is stoped, then this state set.
-    E_STATE_OCCURE_ERROR    = 0x0010,   // If Unintended-System Error is occured, then this state set.
-    E_STATE_ACTION_FAIL     = 0x0020,   // 0: not exist means  , 1: fail with action
+    /** for Time-Synchronization */
+    E_STATE_TIME_SYNC       = 0x0001,   // [Local -Set] doing Time-Sync processing. (0: normal, 1: doing)
+    E_STATE_TIME_ON         = 0x0002,   // [Global-Set] reliable Time, or not. (0: not reliable, 1: reliable)
+    E_STATE_TIME_SRC        = 0x0004,   // [Global-Set] have Time-source(GPS/NTP), or not (0: not have, 1: have)
+    /** for announcing Running-Thread */
+    E_STATE_THR_CMD         = 0x0008,   // [Local -Set] Service  -Thread: It indicate place that CMD is triggered.
+    E_STATE_THR_KEEPALIVE   = 0x0010,   // [Local -Set] KeepAlive-Thread: It indicate place that CMD is triggered.
+    /** for announcing Service-Availability */
+    E_STATE_OUT_OF_SERVICE  = 0x0020,   // [Global-Set] If Service is stoped, then this state set.
+    /** for announcing System/Task Error */
+    E_STATE_OCCURE_ERROR    = 0x0040,   // [Global-Set] If Unintended-System Error is occured, then this state set.
+    E_STATE_ACTION_FAIL     = 0x0080,   // [Global-Set] 0: not exist means  , 1: fail with action
     E_STATE_ALL             = 0xFFFF
 } E_STATE;
 
@@ -41,6 +50,7 @@ typedef uint16_t    StateType;
 
 namespace alias {
 
+
     class CAlias {
     public:
         std::string app_path;
@@ -50,26 +60,42 @@ namespace alias {
         CAlias( const CAlias& myself ) {
             clear();
             set( myself.app_path, myself.pvd_id );
+            _m_state_ = myself._m_state_;
+            _m_machine_ = myself._m_machine_;
         }
 
         CAlias( CAlias&& myself ) {
             clear();
             app_path = std::move(myself.app_path);
             pvd_id = std::move(myself.pvd_id);
+            {
+                std::lock_guard<std::shared_mutex>  guard(myself._mtx_state_);
+                _m_state_ = std::move(myself._m_state_);
+            }
+            {
+                std::lock_guard<std::shared_mutex>  guard(myself._mtx_machine_);
+                _m_machine_ = std::move(myself._m_machine_);
+            }
         }
 
-        CAlias(const std::string pvd_full_path) {
+        CAlias(const std::string pvd_full_path, bool is_self=false) {
             std::string app;
             std::string pvd;
             
             clear();
             extract_app_pvd(pvd_full_path, app, pvd);
             set(app, pvd);
+            if( is_self == true ) {
+                get_self_machine();
+            }
         }
 
-        CAlias(std::string app, std::string pvd) {
+        CAlias(std::string app, std::string pvd, bool is_self=false) {
             clear();
             set(app, pvd);
+            if( is_self == true ) {
+                get_self_machine();
+            }
         }
 
         ~CAlias(void) {
@@ -79,6 +105,8 @@ namespace alias {
         CAlias& operator=(const CAlias& myself) {
             clear();
             set(myself.app_path, myself.pvd_id);
+            _m_state_ = myself._m_state_;
+            _m_machine_ = myself._m_machine_;
         }
 
         bool empty(void) {
@@ -91,8 +119,13 @@ namespace alias {
                 throw std::invalid_argument("pos is E_NO_STATE.");
             }
 
-            std::lock_guard<std::mutex>  guard(_mtx_state_);
+            std::shared_lock<std::shared_mutex>  guard(_mtx_state_);
             return _m_state_ & pos;
+        }
+
+        std::string get_machine_name(void) {
+            std::shared_lock<std::shared_mutex>  guard(_mtx_machine_);
+            return _m_machine_;
         }
 
         // setter
@@ -100,7 +133,7 @@ namespace alias {
             int shift_cnt = 0;
 
             if ( pos == common::E_STATE::E_NO_STATE ) {
-                std::lock_guard<std::mutex>  guard(_mtx_state_);
+                std::lock_guard<std::shared_mutex>  guard(_mtx_state_);
                 _m_state_ = value;
             }
             else {
@@ -112,15 +145,39 @@ namespace alias {
                     }
                 }
 
-                std::lock_guard<std::mutex>  guard(_mtx_state_);
+                std::lock_guard<std::shared_mutex>  guard(_mtx_state_);
                 _m_state_ = (_m_state_ & (~pos)) | ((value << shift_cnt) & pos);
             }
+        }
+
+        void set_machine_name( std::string& name ) {
+            {
+                std::shared_lock<std::shared_mutex>  guard(_mtx_machine_);
+                if( _m_machine_ == name ) {
+                    return ;
+                }
+            }
+
+            std::lock_guard<std::shared_mutex>  guard(_mtx_machine_);
+            if( _m_machine_.empty() != true ) {
+                std::string err = "MACHINE_NAME is already set with \"" + _m_machine_ 
+                                  + "\". So, we can't set it as new-name.(" + name + ")";
+                throw std::logic_error(err);
+            }
+
+            // Only, in case that _m_machine_ is empty, you can set it.
+            _m_machine_ = name;
+        }
+
+        std::string get_full_path(void) {
+            return app_path + "/" + pvd_id;
         }
 
     private:
         void clear(void) {
             app_path.clear();
             pvd_id.clear();
+            _m_machine_.clear();
             _m_state_ = common::E_STATE::E_NO_STATE;
         }
 
@@ -149,10 +206,17 @@ namespace alias {
             }
         }
 
-    private:
-        common::StateType   _m_state_;
+        void get_self_machine( void ) {
+            std::string self_machine = getenv("MACHINE_DEVICE_NAME");
+            set_machine_name( self_machine );
+        }
 
-        std::mutex _mtx_state_;
+    private:
+        common::StateType _m_state_;
+        std::string _m_machine_;
+
+        std::shared_mutex _mtx_state_;
+        std::shared_mutex _mtx_machine_;
 
     };
 
