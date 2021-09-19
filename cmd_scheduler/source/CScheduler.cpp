@@ -52,6 +52,7 @@ void CScheduler::start( void ) {
 }
 
 void CScheduler::exit( void ) {
+    LOGW("Enter.");
     destroy_threads();
     clear();
 }

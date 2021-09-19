@@ -62,7 +62,8 @@ protected:
 	void _connect_slot_(_Callable&& __f, _Args&&... __args)
 	{
 		int sig_num = CHD_TYPE::SIG_NUMBER;
-		Slot_Type func = std::bind(std::forward<_Callable>(__f), std::forward<_Args>(__args)... , sig_num);
+		std::shared_ptr<Slot_Type> func;
+		func = std::make_shared<Slot_Type>( std::bind(std::forward<_Callable>(__f), std::forward<_Args>(__args)... , sig_num) );
 		_mlist_func_p_.push_back(func);
 	}
 
@@ -73,28 +74,28 @@ private:
 	}
 
 	static void default_slot(int __ignore_arg) {
-		std::cout << "default_slot() is called." << std::endl;
 		std::shared_ptr<CHD_TYPE> instance = CHD_TYPE::get_instance();
 
-		std::cout << "default_slot() call sub-sequenced call-back func." << std::endl;
+		std::cout << "default_slot() call sub-sequenced call-back func.(EA: " << instance->_mlist_func_p_.size() << ")" << std::endl;
 		instance->_mbool_sig_occur_ = true;
 		for(auto itor=instance->_mlist_func_p_.begin(); itor != instance->_mlist_func_p_.end(); itor++) {
-			(*itor)();
+			std::cout << "default_slot() call call-back func." << std::endl;
+			(**itor)();
+			std::cout << "default_slot() end of call-back func." << std::endl;
 		}
 	}
 
 	void connect_default_slot(void) {
 		assert(CHD_TYPE::SIG_NUMBER > 0);
-		if(std::signal(CHD_TYPE::SIG_NUMBER, ISlot<CHD_TYPE>::default_slot) == SIG_ERR)
-		{
-			throw SignalException("[Error] connect_slot_direct(): 'signal' function is failed.");
+		if(std::signal(CHD_TYPE::SIG_NUMBER, ISlot<CHD_TYPE>::default_slot) == SIG_ERR) {
+			throw SignalException("[Error] connect_default_slot(): 'signal' function is failed.");
 		}
 	}
 
 protected:
 	sig_atomic_t _mbool_sig_occur_;
 
-	std::list<Slot_Type> _mlist_func_p_;
+	std::list<std::shared_ptr<Slot_Type>> _mlist_func_p_;
 
 };
 

@@ -1,0 +1,13 @@
+prefix=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../bin
+exec_prefix=${prefix}
+libdir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib
+includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/release/lib/../include
+
+
+Name: communicator
+Description: Common-communicator SDK library that support transaction-orient & service-orient.
+Version: 0.2.8
+Libs: -L${libdir} -lcommunicator 
+Libs.private: -ldl -lpthread   
+Cflags: -I${includedir}
+

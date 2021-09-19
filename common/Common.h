@@ -1,9 +1,7 @@
 #ifndef _COMMON_DEFINITION_H_
 #define _COMMON_DEFINITION_H_
 
-#include <mutex>
 #include <string>
-#include <iostream>
 #include <shared_mutex_kes.h>
 
 
@@ -57,159 +55,40 @@ namespace alias {
         std::string pvd_id;
 
     public:
-        CAlias( const CAlias& myself ) {
-            clear();
-            set( myself.app_path, myself.pvd_id );
-            _m_state_ = myself._m_state_;
-            _m_machine_ = myself._m_machine_;
-        }
+        CAlias( const CAlias& myself );
 
-        CAlias( CAlias&& myself ) {
-            clear();
-            app_path = std::move(myself.app_path);
-            pvd_id = std::move(myself.pvd_id);
-            {
-                std::lock_guard<std::shared_mutex>  guard(myself._mtx_state_);
-                _m_state_ = std::move(myself._m_state_);
-            }
-            {
-                std::lock_guard<std::shared_mutex>  guard(myself._mtx_machine_);
-                _m_machine_ = std::move(myself._m_machine_);
-            }
-        }
+        CAlias( CAlias&& myself );
 
-        CAlias(const std::string pvd_full_path, bool is_self=false) {
-            std::string app;
-            std::string pvd;
-            
-            clear();
-            extract_app_pvd(pvd_full_path, app, pvd);
-            set(app, pvd);
-            if( is_self == true ) {
-                get_self_machine();
-            }
-        }
+        CAlias(const std::string pvd_full_path, bool is_self=false);
 
-        CAlias(std::string app, std::string pvd, bool is_self=false) {
-            clear();
-            set(app, pvd);
-            if( is_self == true ) {
-                get_self_machine();
-            }
-        }
+        CAlias(std::string app, std::string pvd, bool is_self=false);
 
-        ~CAlias(void) {
-            clear();
-        }
+        ~CAlias(void);
         
-        CAlias& operator=(const CAlias& myself) {
-            clear();
-            set(myself.app_path, myself.pvd_id);
-            _m_state_ = myself._m_state_;
-            _m_machine_ = myself._m_machine_;
-        }
+        CAlias& operator=(const CAlias& myself);
 
-        bool empty(void) {
-            return pvd_id.empty();
-        }
+        bool empty(void);
 
         // getter
-        common::StateType get_state(common::E_STATE pos) {
-            if( pos == common::E_STATE::E_NO_STATE) {
-                throw std::invalid_argument("pos is E_NO_STATE.");
-            }
+        common::StateType get_state(common::E_STATE pos);
 
-            std::shared_lock<std::shared_mutex>  guard(_mtx_state_);
-            return _m_state_ & pos;
-        }
-
-        std::string get_machine_name(void) {
-            std::shared_lock<std::shared_mutex>  guard(_mtx_machine_);
-            return _m_machine_;
-        }
+        std::string get_machine_name(void);
 
         // setter
-        void set_state(common::E_STATE pos, common::StateType value) {
-            int shift_cnt = 0;
+        void set_state(common::E_STATE pos, common::StateType value);
 
-            if ( pos == common::E_STATE::E_NO_STATE ) {
-                std::lock_guard<std::shared_mutex>  guard(_mtx_state_);
-                _m_state_ = value;
-            }
-            else {
-                // Assumption : pos is continuous-bitmask.
-                while( ((1<<shift_cnt) & pos) == 0 ) {
-                    shift_cnt++;
-                    if( shift_cnt >= (sizeof(common::StateType)*8) ) {
-                        throw std::logic_error("shift_cnt is overflowed.");
-                    }
-                }
+        void set_machine_name( std::string name );
 
-                std::lock_guard<std::shared_mutex>  guard(_mtx_state_);
-                _m_state_ = (_m_state_ & (~pos)) | ((value << shift_cnt) & pos);
-            }
-        }
-
-        void set_machine_name( std::string& name ) {
-            {
-                std::shared_lock<std::shared_mutex>  guard(_mtx_machine_);
-                if( _m_machine_ == name ) {
-                    return ;
-                }
-            }
-
-            std::lock_guard<std::shared_mutex>  guard(_mtx_machine_);
-            if( _m_machine_.empty() != true ) {
-                std::string err = "MACHINE_NAME is already set with \"" + _m_machine_ 
-                                  + "\". So, we can't set it as new-name.(" + name + ")";
-                throw std::logic_error(err);
-            }
-
-            // Only, in case that _m_machine_ is empty, you can set it.
-            _m_machine_ = name;
-        }
-
-        std::string get_full_path(void) {
-            return app_path + "/" + pvd_id;
-        }
+        std::string get_full_path(void);
 
     private:
-        void clear(void) {
-            app_path.clear();
-            pvd_id.clear();
-            _m_machine_.clear();
-            _m_state_ = common::E_STATE::E_NO_STATE;
-        }
+        void clear(void);
 
-        void set( std::string app, std::string pvd ) {
-            app_path = app;
-            pvd_id = pvd;
-        }
+        void set( std::string app, std::string pvd );
 
-        static void extract_app_pvd(const std::string& full_path, std::string& app, std::string& pvd) {
-            std::string delimiter = "/";
-            size_t pos = 0;
+        static void extract_app_pvd(const std::string& full_path, std::string& app, std::string& pvd);
 
-            try {
-                pos = full_path.rfind(delimiter);
-                if( pos == std::string::npos ) {
-                    std::string err = "full_path(" + full_path + ") is invalid.";
-                    throw std::invalid_argument(err);
-                }
-
-                app = full_path.substr(0, pos);
-                pvd = full_path.substr(pos+delimiter.length(), full_path.length());
-            }
-            catch( const std::exception& e ) {
-                std::cout << "[Error] CAlias::extract_app_pvd: " << e.what() << std::endl;
-                throw e;
-            }
-        }
-
-        void get_self_machine( void ) {
-            std::string self_machine = getenv("MACHINE_DEVICE_NAME");
-            set_machine_name( self_machine );
-        }
+        void get_self_machine( void );
 
     private:
         common::StateType _m_state_;

@@ -22,8 +22,7 @@ public:
 	CExitSig(void) = default;
 
 	template<typename _Callable, typename... _Args>
-	void connect(_Callable&& __f, _Args&&... __args)
-	{
+	void connect(_Callable&& __f, _Args&&... __args) {
 		_connect_slot_(std::forward<_Callable>(__f), std::forward<_Args>(__args)...);
 	}
 
@@ -45,8 +44,7 @@ public:
 	}
 
 	template<typename _Callable, typename... _Args>
-	void connect(_Callable&& __f, _Args&&... __args)
-	{
+	void connect(_Callable&& __f, _Args&&... __args) {
 		_connect_slot_(std::forward<_Callable>(__f), std::forward<_Args>(__args)... , std::ref(_m_var_));
 	}
 

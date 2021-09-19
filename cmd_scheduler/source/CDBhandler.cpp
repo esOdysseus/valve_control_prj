@@ -366,7 +366,7 @@ std::shared_ptr<CDBhandler::TVrecord> CDBhandler::get_records(Ttype db_type, con
         }
 
         if( records.get() == NULL ) {
-            records = std::shared_ptr<TVrecord>();
+            records = std::make_shared<TVrecord>();
             if( records.get() == NULL ) {
                 throw std::runtime_error("records Vector memory-allocation is failed.");
             }

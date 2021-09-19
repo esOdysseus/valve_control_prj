@@ -39,18 +39,18 @@ int main(int argc, char *argv[])
         // Create service.
         auto service = service::CScheduler::get_instance();
         service->init( argv[1], argv[2] );
-        // start service.
-        // TODO time-sync base on GPS time.
+        // Start service.
         service->start();
 
 
         // Wait signal
         signal_exit_program->connect(slot_exit_program);
-        while( !signal_exit_program->get_signal() ) {
+        while( signal_exit_program->get_signal() == false ) {
             // wait 1 seconds
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
+        // Exit service.
         service->exit();
     }
     catch( const std::exception &e ) {
