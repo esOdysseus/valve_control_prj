@@ -9,8 +9,6 @@ function runner_set_env() {
 }
 
 function runner_start_program() {
-    # local IP=10.230.194.161
-    # local PORT=12346
     local TODAY_DATE=${1}
     local BUILD_MODE=${2}
     local LOG_FILE_NAME=log_${PROG_NAME}_${TODAY_DATE}.txt

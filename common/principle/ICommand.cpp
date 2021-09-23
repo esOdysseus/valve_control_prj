@@ -158,7 +158,7 @@ bool ICommand::decode(std::shared_ptr<IProtocolInf>& protocol) {
         if( is_parsed() == false) {
             // parsing json payload (where, what, how, why)
             json_manager = std::make_shared<json_mng::CMjson>();
-            LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
+            LOGD("payload=%s , length=%d", payload, payload_size);
             assert( json_manager->parse(payload, payload_size) == true);
 
             // check UniversalCMD version.

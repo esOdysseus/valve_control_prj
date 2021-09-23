@@ -201,6 +201,7 @@ uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& j
 void MCommunicator::clear( void ) {
     _m_myself_.reset();
     _m_time_synchor_.reset();
+    _mm_keepalive_enabled_pvds_.clear();
     _m_alias_searcher_.reset();
     _mm_comm_.clear();
     _mm_listener_.clear();
@@ -230,6 +231,9 @@ void MCommunicator::init( std::map<std::string, TPvdList>& pvd_mapper, const std
                         throw std::runtime_error("ICommunicator memory-allocation is failed.");
                     }
 
+                    // For Keep-Alive enable, Add valid Provider-IDs.
+                    init_keepalive( pvd_id, *handler->get_protocol_list(), cmd::CuCMD::PROTOCOL_NAME);
+
                     // Register Call-Back function pointer of MCommunicator class.
                     LOGD("Register pvd(%s) handler to _mm_comm_.", pvd_id.data());
                     _mm_comm_[pvd_id] = handler;
@@ -243,6 +247,30 @@ void MCommunicator::init( std::map<std::string, TPvdList>& pvd_mapper, const std
                     throw e;
                 }
             }
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void MCommunicator::init_keepalive( std::string& pvd_id, std::list<std::string>& protocols, std::string target_protocol ) {
+    try {
+        if( target_protocol.empty() == true ) {
+            throw std::invalid_argument("target_protocol is NULL. Please check it.");
+        }
+
+        // We only check First Protocol among all-of-them.
+        auto itr=protocols.begin();
+        if( itr == protocols.end() ) {
+            LOGW("Protocol is Nothings with Provider %s", pvd_id.data());
+            return ;
+        }
+
+        if( *itr == target_protocol ) {
+            // register pvd_id to mapper.
+            _mm_keepalive_enabled_pvds_[pvd_id] = target_protocol;
         }
     }
     catch ( const std::exception& e ) {
@@ -475,6 +503,11 @@ void MCommunicator::cb_initialization(enum_c::ProviderType provider_type, bool f
 
 void MCommunicator::cb_connected(std::string peer_app, std::string peer_pvd, bool flag_connect, std::string pvd_id) {
     try {
+        if( _mm_keepalive_enabled_pvds_.find(pvd_id) == _mm_keepalive_enabled_pvds_.end() ) {
+            LOGW("\"%s\" is provider-ID that KEEPALIVE function is disabled.", pvd_id.data());
+            return ;
+        }
+
         if( flag_connect == true ) {
             LOGI("Connected Peer. (app-path=%s, pvd-id=%s)", peer_app.data(), peer_pvd.data());
             _m_time_synchor_->append_peer( peer_app, peer_pvd );

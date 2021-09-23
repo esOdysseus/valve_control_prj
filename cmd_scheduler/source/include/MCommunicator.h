@@ -62,6 +62,8 @@ private:
     void init( std::map<std::string, TPvdList>& pvd_mapper, const std::string& alias_file_path, 
                                                             const TProtoMapper& mapper_pvd_proto );
 
+    void init_keepalive( std::string& pvd_id, std::list<std::string>& protocols, std::string target_protocol );
+
     std::shared_ptr<TCommList> get_comms( std::string& peer_app, std::string& peer_pvd, std::string proto_name );
 
     void apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd);
@@ -92,6 +94,8 @@ private:
     std::shared_ptr<alias::CAlias> _m_myself_;    // MCommunicator state
 
     std::shared_ptr<::cmd::CTimeSync> _m_time_synchor_;
+
+    std::map<std::string/*pvd_id*/, std::string/*protocol-name*/> _mm_keepalive_enabled_pvds_;
 
     std::shared_ptr<alias::IAliasSearcher> _m_alias_searcher_;
 
