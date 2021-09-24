@@ -1,5 +1,3 @@
-#include <unistd.h>
-
 #include <Principle6.h>
 #include <time_kes.h>
 

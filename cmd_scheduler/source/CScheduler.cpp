@@ -287,6 +287,7 @@ void CScheduler::destroy_threads(void) {
     if( _m_is_continue_.exchange(false) == true ) {
         if( _mt_rcmd_handler_.joinable() == true ) {
             LOGI("Destroy RX-cmd handle-thread.");     // Destroy of RX-cmd handle-thread.
+            _m_queue_cv_.notify_all();
             _mt_rcmd_handler_.join();
         }
 
