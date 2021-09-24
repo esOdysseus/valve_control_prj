@@ -378,7 +378,7 @@ bool MCommunicator::send( std::shared_ptr<CMDType> &cmd ) {
 void MCommunicator::send_ack( std::string& pvd_id , std::shared_ptr<CMDType>& rcmd ) {
     try {
         if( (bool)(rcmd->get_flag(E_FLAG::E_FLAG_REQUIRE_ACK)) == false ) {
-            LOGI("Don't send ACK message on pvd(%s).", pvd_id.data());
+            LOGW("Don't send ACK message on pvd(%s).", pvd_id.data());
             return;
         }
 
@@ -559,10 +559,16 @@ void MCommunicator::cb_receive_msg_handle(std::string peer_app, std::string peer
         }
 
         // Processing received CMD msg. (Publishing CMD-event to APPs-Listener.)
-        if( _m_myself_->get_state(E_STATE::E_STATE_OUT_OF_SERVICE) == 0 ) {
-            call_listeners(pvd_id, rcmd);
+        if( _m_myself_->get_state(E_STATE::E_STATE_OUT_OF_SERVICE) != 0 ) {
+            send_ack( pvd_id , rcmd );  // Send ACK message to peer with OUT_OF_SERVICE State.
+            throw std::out_of_range("All-Service are out-of-service state.");
         }
+
+        call_listeners(pvd_id, rcmd);
         send_ack( pvd_id , rcmd );  // Send ACK message to peer.
+    }
+    catch ( const std::out_of_range& e ) {
+        LOGW("%s", e.what());
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());

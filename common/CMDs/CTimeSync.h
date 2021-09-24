@@ -12,6 +12,7 @@
 #include <Common.h>
 #include <CMDs/CuCMD.h>
 #include <time_kes.h>
+#include <gps.h>
 
 /*******************************
  * Definition of Class.
@@ -91,7 +92,7 @@ private:
 
     std::string alias_full_path(std::string& app, std::string& pvd);
 
-    double get_gps_time(void);
+    double get_time_src(void);
 
     bool set_system_time( double time );
 
@@ -106,6 +107,8 @@ private:
 
     std::map<std::string/*peer-full-path*/, bool> _mm_unsynced_peers_;     // Connected Peer-list. (for keep-alive proc)
 
+    ::gps_pkg::Cgps _m_gps_;
+
     // Thread routine variables
     std::atomic<bool> _m_is_continue_;       // Thread continue-flag.
 
@@ -119,6 +122,7 @@ private:
     static constexpr const int64_t TIME_SEND_PERIOD_KEEPALIVE = 5;
     static constexpr const int64_t TIME_UPDATE_PERIOD = 60;
     static constexpr const double TIME_INTERVAL_THRESOLDER = 0.2;
+    static constexpr const char* GPS_UART_PATH = "/dev/ttyS1";
 
 };
 

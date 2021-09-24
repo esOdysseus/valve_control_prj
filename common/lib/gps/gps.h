@@ -34,16 +34,20 @@ private:
     };
 
 public:
-    Cgps( const char* UART_PATH, Tbr baud_rate=Tbr::E_BR_NONE );
+    Cgps( const char* UART_PATH, Tbr baud_rate=Tbr::E_BR_9600 );
 
     ~Cgps(void);
 
     void reset(void);
 
+    bool is_active(void);
+
     double get_time(void);
 
 private:
     Cgps(void) = delete;
+
+    void clear(void);
 
 private:
     TState _m_state_;               // State of GPS-module. [ In-Active, Active ]

@@ -30,7 +30,7 @@ About each of program, Description is following.
                 // "latency": "10.0",     // unit : second  (for one-time)
                 "week": "mon",        // valid-values : (for routine.week) [ mon, tues, wednes, thurs, fri, satur, sun ]
                 "period" : "2",   // valid-values : (for routine) [ 1 <= X ]: 2 week/day routine ...
-                "date" : "21-09-13",     // valid-values : (for routine & specific)
+                "date" : "2021-09-13",     // valid-values : (for routine & specific)
                 "time" : "15:30:23"     // valid-values : (for routine & specific)
             }
         },

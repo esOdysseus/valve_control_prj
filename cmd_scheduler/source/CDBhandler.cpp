@@ -476,9 +476,9 @@ std::shared_ptr<db_pkg::CDBsqlite>& CDBhandler::get_db_instance( Ttype db_type )
 void CDBhandler::regist_handlers_4_context_maker(void) {
     try {
         /* Regist Insert-Parameter-Context maker */
-        TRecordHandler lamda_future_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+        auto lamda_future_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_FUTURE_EVENT ") VALUES(";
-
+            LOGD("lamda_future_event");
             try {
                 if( cmd.get() != NULL ) {
                     record = make_base_record(cmd);
@@ -518,10 +518,9 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
             return context;
         };
 
-
-        TRecordHandler lamda_future_period = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+        auto lamda_future_period = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_FUTURE_PERIOD ") VALUES(";
-
+            LOGD("lamda_future_period");
             try {
                 if( cmd.get() != NULL ) {
                     uint32_t period;
@@ -579,9 +578,9 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
             return context;
         };
 
-        TRecordHandler lamda_now_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+        auto lamda_now_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_NOW_EVENT ") VALUES(";
-
+            LOGD("lamda_now_event");
             try {
                 if( record.get() == NULL ) {
                     throw std::logic_error("lamda_now_event: We need record parameter.");
@@ -625,9 +624,9 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
             return context;
         };
 
-        TRecordHandler lamda_past_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
+        auto lamda_past_event = [this](std::shared_ptr<cmd::ICommand> cmd, std::shared_ptr<Trecord> record) -> std::string {
             std::string context = "(" KEYS_PAST_EVENT ") VALUES(";
-
+            LOGD("lamda_past_event");
             try {
                 if( record.get() == NULL ) {
                     throw std::logic_error("lamda_past_event: We need record parameter.");

@@ -32,7 +32,8 @@ constexpr const double CTimeSync::TIME_INTERVAL_THRESOLDER;
 /**********************************
  * Definition of Public Function.
  */
-CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func ) {
+CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func )
+: _m_gps_(GPS_UART_PATH) {
     clear();
 
     try {
@@ -54,11 +55,11 @@ CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func ) {
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 0);
 
         // if possible, then set System-Time according to GPS-Time.
-        if( set_system_time( get_gps_time() ) == true ) {
+        if( set_system_time( get_time_src() ) == true ) {
             _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, 1);
             _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 1);
+            _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, 0);
         }
-
         create_threads();
     }
     catch( const std::exception& e ) {
@@ -420,8 +421,10 @@ std::string CTimeSync::alias_full_path(std::string& app, std::string& pvd) {
     return app + "/" + pvd;
 }
 
-double CTimeSync::get_gps_time(void) {
-    // TODO try to get GPS-time.
+double CTimeSync::get_time_src(void) {
+    if( _m_gps_.is_active() ) {
+        return _m_gps_.get_time();
+    }
     return 0.0;
 }
 
@@ -431,7 +434,8 @@ bool CTimeSync::set_system_time( double time ) {
         return false;
     }
 
-    return ::time_pkg::CTime::set( time );
+    // return ::time_pkg::CTime::set( time );
+    return true;
 }
 
 double CTimeSync::calculate_avg_time_on( double& now, bool& time_on, bool& time_src ) {
@@ -463,14 +467,14 @@ double CTimeSync::calculate_avg_time_on( double& now, bool& time_on, bool& time_
 
     try {
         std::map<std::string/*machine*/,SSumDouble> now_time_on;
-        double gps_time = get_gps_time();
+        double tsrc_value = get_time_src();
         now = ::time_pkg::CTime::get<double>();
         time_src = false;
 
         /** Sum of gps-time per MACHINE_NAME. */
-        if( gps_time != 0.0 ) {
+        if( tsrc_value != 0.0 ) {
             time_src = true;
-            now_time_on[_m_myself_->get_machine_name()].sum += gps_time;
+            now_time_on[_m_myself_->get_machine_name()].sum += tsrc_value;
             now_time_on[_m_myself_->get_machine_name()].cnt += 1;
         }
 

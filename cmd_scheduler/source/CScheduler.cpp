@@ -438,9 +438,11 @@ void CScheduler::process_future_space( std::shared_ptr<cmd::ICommand>& rcmd ) {
         // Classfy which When-info of CMD is EventBase-type or PeriodBase-type.
         // Store json-data of body in CMD to Database(Future-DB) according to type-info of "when" in CMD.
         if( t_when == principle::CWhen::TYPE_ROUTINE_DAY || t_when == principle::CWhen::TYPE_ROUTINE_WEEK ) {
+            LOGD("Try to insert a record to Periodic-Table in Future.");
             _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_PERIOD, rcmd);
         }
         else {
+            LOGD("Try to insert a record to Event-Table in Future.");
             _m_db_.insert_record(Tdb::Ttype::ENUM_FUTURE, Tdb::DB_TABLE_EVENT, rcmd);
         }
     }

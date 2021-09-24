@@ -1,3 +1,4 @@
+#include <unistd.h>
 
 #include <Principle6.h>
 #include <time_kes.h>
@@ -56,6 +57,9 @@ CWhen::CWhen( std::string type, std::string start_date,
         if( start_date != DATE_NULL_STR && run_time != TIME_NULL_STR ) {
             start_time = CTime::convert<double>( run_time, start_date.data(), 
                                                  CTime::DEF_TIME_FORMAT, CTime::DEF_DATE_FORMAT );
+            if( start_time < 0.0 ) {
+                throw std::range_error("Please insert \"date\"/\"time\" like \"2021-06-13\"/\"15:30:23\"");
+            }
         }
 
         apply( type, start_time, week_e, period, latency );
@@ -208,20 +212,23 @@ void CWhen::regist_lamda_funcs(void) {
     LOGD("Enter");
 
     _mm_func_[TYPE_ONECE] = [this](void) -> double {
+        LOGD("get_start_time[TYPE_ONECE]");
         if( _flag_apply_done_ == false ) {
             return START_TIME_NULL;
         }
+
         return this->_start_time_;
     };
 
     _mm_func_[TYPE_ROUTINE_WEEK] = [this](void) -> double {
+        LOGD("get_start_time[TYPE_ROUTINE_WEEK]");
         if( _flag_apply_done_ == false ) {
             return START_TIME_NULL;
         }
 
         try {
             double now = CTime::get<double>();
-
+            
             while( now > this->_start_time_ ) {
                 this->_start_time_ = CWhen::get_next_week( this->_start_time_, 
                                                            this->_week_, 
@@ -232,10 +239,12 @@ void CWhen::regist_lamda_funcs(void) {
             LOGERR("%s", e.what());
             throw e;
         }
+        
         return this->_start_time_;
     };
 
     _mm_func_[TYPE_ROUTINE_DAY] = [this](void) -> double {
+        LOGD("get_start_time[TYPE_ROUTINE_DAY]");
         if( _flag_apply_done_ == false ) {
             return START_TIME_NULL;
         }
@@ -351,8 +360,7 @@ double CWhen::get_next_week( double base_time, TEweek week, uint32_t period ) {
         }
         // calculate need-days for target-week.
         need_days += 7*(period-1);
-
-        return base_week + static_cast<double>( 24 * 3600 * need_days );
+        return base_time + static_cast<double>( 24 * 3600 * need_days );
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
