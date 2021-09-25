@@ -87,8 +87,10 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
                     // parsing json payload (where, what, how, why)
                     Json_DataType json_manager;
                     json_manager = std::make_shared<json_mng::CMjson>();
-                    LOGD("strlen(payload)=%d , length=%d", strlen(payload), payload_size);
+                    LOGD("payload=%s , length=%d", payload, payload_size);
                     assert( json_manager->parse(payload, payload_size) == true);
+                    _payload_ = std::string( json_manager->print_buf() );
+                    LOGD("_payload_=%s", _payload_.data());
 
                     // check UniversalCMD version.
                     auto ver = extract_version(json_manager);
@@ -108,12 +110,12 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
             }
 
             // mark receive-time of this packet using my-system time.
-            _payload_ = std::string(payload);
             set_flag_parse( true );
         }
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
+        _payload_.clear();
         throw CException(E_ERROR::E_ERR_FAIL_DECODING_CMD);
     }
 
