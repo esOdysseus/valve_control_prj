@@ -40,7 +40,9 @@ double Cgps::get_time(void) {
         // TODO try to get GPS-time
         LOGERR("Not Implemented yet.");
 
-        // time = ::time_pkg::CTime::get<double>();    // TODO temporary code.
+#ifdef TEST_MODE_ENABLE
+        time = ::time_pkg::CTime::get<double>();    // TODO temporary code.
+#endif
     }
     return time;
 }

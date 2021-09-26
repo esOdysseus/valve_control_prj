@@ -36,6 +36,7 @@ INCLUDEPATH += \
     $$COMM_LIB_ROOT/include    \
     $$COMMON_LIB_ROOT \
     $$COMMON_LIB_ROOT/principle   \
+    $$COMMON_LIB_ROOT/lib/gps    \
     $$COMMON_LIB_ROOT/lib/json    \
     $$COMMON_LIB_ROOT/lib/lock    \
     $$COMMON_LIB_ROOT/lib/logger  \
@@ -47,7 +48,8 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)
+    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)   \
+    $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

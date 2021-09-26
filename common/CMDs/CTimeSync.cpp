@@ -434,7 +434,11 @@ bool CTimeSync::set_system_time( double time ) {
         return false;
     }
 
+#ifdef TEST_MODE_ENABLE
+    return true;
+#else
     return ::time_pkg::CTime::set( time );
+#endif
 }
 
 double CTimeSync::calculate_avg_time_on( double& now, bool& time_on, bool& time_src ) {

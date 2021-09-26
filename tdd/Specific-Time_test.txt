@@ -1,0 +1,45 @@
+{   // following is payload format.
+    "version": "1.0.0",
+    "who": {
+        "app": "Valve-Controller",      // APP-path in alias
+        "pvd": "cmd_receiver",          // Provider-id in alias
+        "func": "none"                  // Optional (for Service-oriented)
+    },
+    "when": {
+        "type": "specific",           // valid-values : [ one-time, routine.week, routine.day, specific ]
+        "time": {
+            // "latency": "30.0"     // unit : second  (for one-time)
+            // "week": "sun",        // valid-values : (for routine.week) [ mon, tues, wednes, thurs, fri, satur, sun ]
+            // "period" : "1",   // valid-values : (for routine) [ 1 <= X ]: 2 week/day routine ...
+            "date" : "2021-09-26",     // valid-values : (for routine & specific)
+            "time" : "15:04:23"     // valid-values : (for routine & specific)
+        }
+    },
+    "where": {
+        "type": "center.gps",           // valid-values : [ 'center.gps', 'unknown', 'dont.care', 'db' ]
+        "contents": {               // center.gps : 일때, 장소의 중심 좌표만 기록한다.
+            "long": "123456789.123456",
+            "lat": "123456789.123456"
+        }
+    },
+    "what": {
+        "type": "valve.swc",           // valid-values : [ 'valve.swc', 'db' ]
+        "contents": {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
+            "seq": "1"
+        }
+    },
+    "how": {
+        "type": "valve.swc",           // valid-values : [ 'valve.swc', 'db' ]
+        "contents": {               // valve.swc : 일때, Action의 Start~Stop까지 묶어준다.
+            "method-pre": "open",   // valid-values : [ open , close, none ]
+            "costtime": "40.0",   // valid-values : seconds + point value
+                                    //                0.0 : when method is close
+            "method-post": "close"  // valid-values : [ open , close, none ]
+        }
+    },
+    "why": {                        // Optional
+        "desp": "Why description",
+        "objective": ["key-words" ],
+        "dependency": ["key-words" ]
+    }
+}
