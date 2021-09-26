@@ -372,7 +372,16 @@ std::shared_ptr<CDBhandler::TVrecord> CDBhandler::get_records(Ttype db_type, con
             }
         }
 
-        db_pkg::IDBsqlite3::TCBselect lamda_func = [&records](std::shared_ptr<Trecord>& record) -> void {
+        db_pkg::IDBsqlite3::TCBselect lamda_func = [&records, &convertor, &db_type](std::shared_ptr<Trecord>& record) -> void {
+            if( convertor != nullptr ) {
+                auto itr_ele = record->find(std::string(KEY_PAYLOAD));
+                if( itr_ele == record->end() ) {
+                    throw std::logic_error("NOT Exist KEY_PAYLOAD in record.");
+                }
+
+                convertor(db_type, *record, itr_ele->second);
+            }
+
             LOGD("push record to record-vector.");
             records->push_back(record);
         };
@@ -382,25 +391,13 @@ std::shared_ptr<CDBhandler::TVrecord> CDBhandler::get_records(Ttype db_type, con
             std::string err = "query_select is failed: SELECT * FROM " + table + " WHERE " + context;
             throw std::logic_error(err);
         }
-
-        if( convertor != nullptr ) {
-            for( auto itr=records->begin(); itr!=records->end(); itr++ ) {
-                std::shared_ptr<Trecord>& record = *itr;
-                auto itr_ele = record->find(std::string(KEY_PAYLOAD));
-                if( itr_ele == record->end() ) {
-                    throw std::logic_error("NOT Exist KEY_PAYLOAD in record.");
-                }
-
-                convertor(db_type, *record, itr_ele->second);
-            }
-        }
-
-        return records;
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
         throw e;
     }
+    
+    return records;
 }
 
 std::shared_ptr<alias::CAlias> CDBhandler::get_who(const Trecord& record) {
@@ -612,9 +609,9 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
                                   + "'" + (*record)[KEY_WHERE] + "',"  \
                                   + "'" + (*record)[KEY_WHAT] + "',"  \
                                   + "'" + (*record)[KEY_HOW] + "',"  \
-                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "',"  \
                                   + (*record)[KEY_MSG_ID] + ","  \
-                                  + "'" + (*record)[KEY_STATE] + "',"  \
+                                  + "'" + (*record)[KEY_STATE] + "'"  \
                                   + ")";
             }
             catch( const std::exception& e ) {
@@ -658,9 +655,9 @@ void CDBhandler::regist_handlers_4_context_maker(void) {
                                   + "'" + (*record)[KEY_WHERE] + "',"  \
                                   + "'" + (*record)[KEY_WHAT] + "',"  \
                                   + "'" + (*record)[KEY_HOW] + "',"  \
-                                  + "'" + (*record)[KEY_PAYLOAD] + "'"  \
+                                  + "'" + (*record)[KEY_PAYLOAD] + "',"  \
                                   + (*record)[KEY_MSG_ID] + ","  \
-                                  + "'" + (*record)[KEY_STATE] + "',"  \
+                                  + "'" + (*record)[KEY_STATE] + "'"  \
                                   + ")";
             }
             catch( const std::exception& e ) {

@@ -434,8 +434,7 @@ bool CTimeSync::set_system_time( double time ) {
         return false;
     }
 
-    // return ::time_pkg::CTime::set( time );
-    return true;
+    return ::time_pkg::CTime::set( time );
 }
 
 double CTimeSync::calculate_avg_time_on( double& now, bool& time_on, bool& time_src ) {

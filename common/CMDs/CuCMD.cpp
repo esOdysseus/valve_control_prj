@@ -88,7 +88,9 @@ bool CuCMD::decode(std::shared_ptr<IProtocolInf>& protocol) {
                     Json_DataType json_manager;
                     json_manager = std::make_shared<json_mng::CMjson>();
                     LOGD("payload=%s , length=%d", payload, payload_size);
-                    assert( json_manager->parse(payload, payload_size) == true);
+                    if( json_manager->parse(payload, payload_size) != true) {
+                        throw std::runtime_error("Invalid json-payload. please check it.");
+                    }
                     _payload_ = std::string( json_manager->print_buf() );
                     LOGD("_payload_=%s", _payload_.data());
 
