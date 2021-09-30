@@ -9,11 +9,10 @@
 #include <iostream>
 #include <unistd.h>
 
-#include <logger.h>
-#include <ICommunicator.h>
-#include <CCommunicator.h>
+#include <CService.h>
 #include <sys_sigslot.h>
 #include <version.h>
+#include <logger.h>
 
 using namespace std::placeholders;
 
@@ -35,38 +34,27 @@ int main(int argc, char *argv[])
     }
 
     try {
-        std::string app_path = "Valve-Controller";
-        std::string pvd_id = "cmd_receiver";
         // Create instance of System-signal receiver.
         auto signal_exit_program = sys_sigslot::CExitSig::get_instance();
         assert(signal_exit_program != NULL);
 
-        // Create Communicator instance.
-        auto handler = std::make_shared<ICommunicator>( app_path,
-                                                        pvd_id,
-                                                        argv[1],
-                                                        argv[2],
-                                                        enum_c::ProviderMode::E_PVDM_BOTH);
-        if( handler.get() == NULL ) {
-            throw std::runtime_error("Can not create ICommunicator handler.");
-        }
-        
-        std::cout << "Communicator-FW Version = " << handler->get_version() << std::endl;
 
-        // Register Call-Back function pointer of CCommunicator class.
-        valve_pkg::CCommunicator vController( handler, app_path, pvd_id );
-        handler->register_initialization_handler(std::bind(&valve_pkg::CCommunicator::cb_initialization, &vController, _1, _2));
-        handler->register_connection_handler(std::bind(&valve_pkg::CCommunicator::cb_connected, &vController, _1, _2, _3));
-        handler->register_message_handler(std::bind(&valve_pkg::CCommunicator::cb_receive_msg_handle, &vController, _1, _2, _3));
-        handler->register_unintended_quit_handler(std::bind(&valve_pkg::CCommunicator::cb_abnormally_quit, &vController, _1));
+        // Create service.
+        auto service = service::CService::get_instance();
+        service->init( argv[1], argv[2] );
+        // Start service.
+        service->start();
 
-        handler->init();
 
+        // Wait signal
         signal_exit_program->connect(slot_exit_program);
         while( !signal_exit_program->get_signal() ) {
             // wait 1 seconds
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+
+        // Exit service.
+        service->exit();
     }
     catch( const std::exception &e) {
         LOGERR("%s", e.what());

@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include <logger.h>
-#include <CMDs/CuCMD.h>
+#include <CuCMD/CuCMD.h>
 #include <CException.h>
 #include <IProtocolInf.h>
 #include <Common.h>

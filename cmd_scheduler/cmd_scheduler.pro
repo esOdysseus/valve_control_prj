@@ -54,7 +54,7 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
-    $$files($$COMMON_LIB_ROOT/CMDs/*.cpp)   \
+    $$files($$COMMON_LIB_ROOT/CuCMD/*.cpp)   \
     $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp) \
     $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp) \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)

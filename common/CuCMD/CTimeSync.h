@@ -10,9 +10,10 @@
 #include <functional>
 
 #include <Common.h>
-#include <CMDs/CuCMD.h>
+#include <CuCMD/CuCMD.h>
 #include <time_kes.h>
 #include <gps.h>
+#include <ICommunicator.h>
 
 /*******************************
  * Definition of Class.
@@ -58,6 +59,12 @@ public:
 
     ~CTimeSync( void );
 
+    /* Only for Client */
+    bool regist_keepalive( std::string peer_app, std::string peer_pvd, std::shared_ptr<ICommunicator>& comm );
+
+    /* Only for Client */
+    bool unregist_keepalive( const std::string& peer_app, const std::string& peer_pvd );
+
     void regist_failsafe(TFfailSafe func);
 
     void unregist_failsafe(void);
@@ -90,7 +97,7 @@ private:
 
     void destroy_threads(void);
 
-    std::string alias_full_path(std::string& app, std::string& pvd);
+    static std::string alias_full_path(const std::string& app, const std::string& pvd);
 
     double get_time_src(void);
 
@@ -114,8 +121,11 @@ private:
 
     std::thread _mt_keepaliver_; // Periodically, Thread that is charge of reacting Keep-Alive message.
 
-    std::map<std::string/*peer-full-path*/, CpeerDesc> _mm_peers_;     // Connected Peer-list. (for keep-alive proc)
+    class CServerInfo;
+    std::map<std::string/*peer-full-path*/, std::shared_ptr<CServerInfo>> _mm_servers_;   // Wanted Peer-list. (for keep-alive proc)
+    std::mutex _mtx_servers_;
 
+    std::map<std::string/*peer-full-path*/, CpeerDesc> _mm_peers_;     // Connected Peer-list. (for keep-alive proc)
     std::mutex _mtx_peers_;
 
     static constexpr const double TIME_TREATE_AS_DISCONNACT = 10.0;

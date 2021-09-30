@@ -13,9 +13,9 @@
 #include <ICommunicator.h>
 #include <IAliasSearcher.h>
 #include <ICommand.h>
-#include <CMDs/CuCMD.h>
+#include <CuCMD/CuCMD.h>
 #include <Common.h>
-#include <CMDs/CTimeSync.h>
+#include <CuCMD/CTimeSync.h>
 
 namespace comm {
 
@@ -42,7 +42,15 @@ public:
 
     void register_listener( const std::string& pvd_id, TListener func );
 
+    std::shared_ptr<alias::CAlias> get_myself(void);
+
     void start( void );
+
+    /** for client mode. */
+    bool connect_auto( const std::string& peer_app, const std::string& peer_pvd, const std::string& pvd_id );
+
+    /** for client mode. */
+    bool disconnect( const std::string& peer_app, const std::string& peer_pvd );
 
     /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
     uint32_t keepalive( const alias::CAlias& peer, const std::string& data, common::StateType state );
@@ -50,7 +58,9 @@ public:
     /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
     uint32_t request( const alias::CAlias& peer, const std::string& json_cmd, common::StateType state, bool require_resp=true );
 
-    // bool send_cmd_done(std::shared_ptr<CMDType> &cmd);
+    bool notify_action_start( const alias::CAlias& peer, unsigned long msg_id, E_STATE state );// for client mode.
+
+    bool notify_action_done( const alias::CAlias& peer, unsigned long msg_id, E_STATE state ); // for client mode.
 
 private:
     MCommunicator(void) = delete;
@@ -64,18 +74,18 @@ private:
 
     void init_keepalive( std::string& pvd_id, std::list<std::string>& protocols, std::string target_protocol );
 
-    std::shared_ptr<TCommList> get_comms( std::string& peer_app, std::string& peer_pvd, std::string proto_name );
+    std::shared_ptr<TCommList> get_comms( const std::string& peer_app, const std::string& peer_pvd, std::string proto_name );
 
-    void apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd);
+    void apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd, common::StateType state=E_STATE::E_NO_STATE);
 
     bool send( std::shared_ptr<CMDType> &cmd );
 
     void send_ack( std::string& pvd_id , std::shared_ptr<CMDType>& rcmd );
 
-    bool send_without_payload( std::shared_ptr<alias::CAlias>& peer, E_FLAG flag, unsigned long msg_id=0);
+    bool send_without_payload( const alias::CAlias& peer, E_FLAG flag, unsigned long msg_id=0, E_STATE state=E_STATE::E_NO_STATE);
 
     bool send_without_payload( const alias::CAlias& peer, E_FLAG flag, unsigned long msg_id, 
-                               std::shared_ptr<ICommunicator>& comm);
+                               std::shared_ptr<ICommunicator>& comm, E_STATE state=E_STATE::E_NO_STATE);
 
     void call_listeners( std::string& pvd_id, std::shared_ptr<CMDType>& rcmd );
 

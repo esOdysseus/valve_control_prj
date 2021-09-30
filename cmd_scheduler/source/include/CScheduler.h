@@ -10,7 +10,7 @@
 #include <condition_variable>
 
 #include <Common.h>
-#include <MCommunicator.h>
+#include <CuCMD/MCommunicator.h>
 #include <ICommand.h>
 #include <CDBhandler.h>
 

@@ -1,2 +1,0 @@
-{ "owner":"192.168.1.2:48809", "dbgk-cmd":"DBGK valve-ctrl alias_udp_valve 1 close period 5 11:51:00 " }
-{ "owner":"192.168.1.2:49001", "dbgk-cmd":"DBGK valve-ctrl alias_udp_valve 1 close period 5 11:48:00 " }

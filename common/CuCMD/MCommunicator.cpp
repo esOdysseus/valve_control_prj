@@ -5,10 +5,10 @@
 #include <unistd.h>
 
 #include <logger.h>
-#include <MCommunicator.h>
+#include <CuCMD/MCommunicator.h>
 #include <IProtocolInf.h>
 #include <CException.h>
-#include <CMDs/CuCMD.h>
+#include <CuCMD/CuCMD.h>
 
 using namespace std::placeholders;
 
@@ -66,6 +66,10 @@ void MCommunicator::register_listener( const std::string& pvd_id, TListener func
     }
 }
 
+std::shared_ptr<alias::CAlias> MCommunicator::get_myself(void) {
+    return _m_myself_;
+}
+
 void MCommunicator::start( void ) {
     try {
         for( auto itr=_mm_comm_.begin(); itr != _mm_comm_.end(); itr++ ) {
@@ -77,6 +81,20 @@ void MCommunicator::start( void ) {
         LOGERR("%s", e.what());
         throw e;
     }
+}
+
+bool MCommunicator::connect_auto( const std::string& peer_app, const std::string& peer_pvd, const std::string& pvd_id ) {
+    auto itr = _mm_comm_.find(pvd_id);
+    if( itr == _mm_comm_.end() ) {
+        LOGW("We don't have provider which is naming like %s", pvd_id.data());
+        return false;
+    }
+
+    return _m_time_synchor_->regist_keepalive( peer_app, peer_pvd, itr->second);
+}
+
+bool MCommunicator::disconnect( const std::string& peer_app, const std::string& peer_pvd ) {
+    return _m_time_synchor_->unregist_keepalive( peer_app, peer_pvd );
 }
 
 /* return value: msg-id if sending req-msg is failed, then msg-id == 0, vice verse msg-id != 0  */
@@ -188,10 +206,13 @@ uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& j
     return msg_id;
 }
 
-// bool MCommunicator::send_cmd_done(std::shared_ptr<CMDType> &cmd) {
-//     // TODO
-//     return false;
-// }
+bool MCommunicator::notify_action_start( const alias::CAlias& peer, unsigned long msg_id, E_STATE state ) {
+    return send_without_payload(peer, E_FLAG::E_FLAG_ACTION_START, msg_id, state);
+}
+
+bool MCommunicator::notify_action_done( const alias::CAlias& peer, unsigned long msg_id, E_STATE state ) {
+    return send_without_payload(peer, E_FLAG::E_FLAG_RESP_MSG, msg_id, state);
+}
 
 
 
@@ -279,7 +300,7 @@ void MCommunicator::init_keepalive( std::string& pvd_id, std::list<std::string>&
     }
 }
 
-std::shared_ptr<MCommunicator::TCommList> MCommunicator::get_comms( std::string& peer_app, std::string& peer_pvd, std::string proto_name ) {
+std::shared_ptr<MCommunicator::TCommList> MCommunicator::get_comms( const std::string& peer_app, const std::string& peer_pvd, std::string proto_name ) {
     std::shared_ptr<TCommList> comms_list;
 
     try {
@@ -314,13 +335,14 @@ std::shared_ptr<MCommunicator::TCommList> MCommunicator::get_comms( std::string&
     return comms_list;
 }
 
-void MCommunicator::apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd) {
+void MCommunicator::apply_sys_state(std::shared_ptr<::cmd::CuCMD>& cmd, common::StateType state) {
     try {
         if( cmd.get() == NULL ) {
             throw std::invalid_argument("CMD is NULL.");
         }
 
-        cmd->set_state( _m_myself_->get_state(::common::E_STATE::E_STATE_ALL) );
+        state |= _m_myself_->get_state(::common::E_STATE::E_STATE_ALL);
+        cmd->set_state( state );
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -397,10 +419,10 @@ void MCommunicator::send_ack( std::string& pvd_id , std::shared_ptr<CMDType>& rc
     }
 }
 
-bool MCommunicator::send_without_payload( std::shared_ptr<alias::CAlias>& peer, E_FLAG flag, unsigned long msg_id) {
+bool MCommunicator::send_without_payload( const alias::CAlias& peer, E_FLAG flag, unsigned long msg_id, E_STATE state) {
     bool result = true;
     try {
-        std::shared_ptr<TCommList> comms_list = get_comms( peer->app_path, peer->pvd_id, cmd::CuCMD::PROTOCOL_NAME );
+        std::shared_ptr<TCommList> comms_list = get_comms( peer.app_path, peer.pvd_id, cmd::CuCMD::PROTOCOL_NAME );
         if( comms_list.get() == NULL ) {
             throw std::runtime_error("TCommList memory-allocation is failed.");
         }
@@ -410,8 +432,8 @@ bool MCommunicator::send_without_payload( std::shared_ptr<alias::CAlias>& peer, 
         }
 
         for( auto itr = comms_list->begin(); itr != comms_list->end(); itr++ ) {
-            if( send_without_payload( *peer, flag, msg_id, *itr) == false ) {
-                LOGERR("send_without_payload is failed. (peer: %s/%s:%u)", peer->app_path.data(), peer->pvd_id.data(), msg_id);
+            if( send_without_payload( peer, flag, msg_id, *itr, state) == false ) {
+                LOGERR("send_without_payload is failed. (peer: %s/%s:%u)", peer.app_path.data(), peer.pvd_id.data(), msg_id);
                 result = false;
             }
         }
@@ -427,7 +449,8 @@ bool MCommunicator::send_without_payload( std::shared_ptr<alias::CAlias>& peer, 
 bool MCommunicator::send_without_payload( const alias::CAlias& peer, 
                                           E_FLAG flag, 
                                           unsigned long msg_id, 
-                                          std::shared_ptr<ICommunicator>& comm) {
+                                          std::shared_ptr<ICommunicator>& comm,
+                                          E_STATE state) {
 
     std::shared_ptr<cmd::CuCMD> simple_cmd;
     std::shared_ptr<payload::CPayload> new_payload;
@@ -446,7 +469,7 @@ bool MCommunicator::send_without_payload( const alias::CAlias& peer,
         LOGD("Is empty of MySelf? (%u)", _m_myself_->empty());
         simple_cmd = std::make_shared<cmd::CuCMD>(*_m_myself_, flag);
         // Check current state & set it to cmd.
-        apply_sys_state(simple_cmd);
+        apply_sys_state(simple_cmd, state);
         // Set message-ID.
         simple_cmd->set_id(msg_id);
 

@@ -7,13 +7,12 @@
 #include <memory>
 #include <mutex>
 
-#include <CMDs/CuCMD.h>
+#include <CuCMD/CuCMD.h>
 #include <Common.h>
+#include <CuCMD/MCommunicator.h>
 
 namespace valve_pkg {
 
-
-class CCommunicator;
 
 class CController {
 public:
@@ -53,9 +52,11 @@ private:
     };
 
 public:
-    CController(CCommunicator* handler);
+    CController(void);
 
     ~CController(void);
+
+    void init(std::shared_ptr<::comm::MCommunicator>& comm);
 
     void soft_exit(void);
 
@@ -66,8 +67,10 @@ public:
 
     bool apply_new_cmd(std::shared_ptr<CMDType> cmd);
 
+    void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
+
 private:
-    CController( void ) = delete;
+    void clear(void);
 
     bool init_gpio_root(void);
 
@@ -94,15 +97,15 @@ private:
     CMDlistType decompose_cmd(std::shared_ptr<CMDType> cmd);
 
 private:
-    CCommunicator* _comm_;
+    std::shared_ptr<::comm::MCommunicator> _comm_;
     
+    std::shared_ptr<alias::CAlias> _m_myself_;
+
     bool _is_continue_;       // Thread continue-flag.
     
     std::thread _runner_exe_cmd_; // Periodically, Thread that is charge of deciding & executing for received CMD.
 
     std::thread _runner_valve_pwroff_[E_VALVE::E_VALVE_CNT];
-
-    StateType _state_;
 
     CMDlistType _cmd_list_;     // cmd encode/decode for valve-controling.
 

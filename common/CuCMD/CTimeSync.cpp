@@ -2,7 +2,7 @@
 #include <limits>
 
 #include <logger.h>
-#include <CMDs/CTimeSync.h>
+#include <CuCMD/CTimeSync.h>
 #include <time_kes.h>
 
 
@@ -21,6 +21,51 @@
  *  7. When boot, update-time processing is trigged by first peer-connection.
  **********/
 namespace cmd {
+
+class CTimeSync::CServerInfo {
+public:
+    CServerInfo(std::string& app_path, std::string& pvd_id, std::shared_ptr<ICommunicator>& comm) {
+        try {
+            if( app_path.empty() == true || pvd_id.empty() == true || comm.get() == NULL ) {
+                throw std::invalid_argument("There is invalid argument.");
+            }
+
+            _m_app_path_ = app_path;
+            _m_pvd_id_ = pvd_id;
+            _m_comm_ = comm;
+        }
+        catch( const std::exception& e ) {
+            LOGERR("%s", e.what());
+            throw e;
+        }
+    }
+
+    ~CServerInfo(void) {
+        _m_comm_.reset();
+        _m_pvd_id_.clear();
+        _m_app_path_.clear();
+    }
+
+    bool connect_try(void) {
+        return _m_comm_->connect_try( std::forward<std::string>(_m_app_path_), std::forward<std::string>(_m_pvd_id_) );
+    }
+
+    void disconnect(void) {
+        _m_comm_->disconnect( _m_app_path_, _m_pvd_id_ );
+    }
+
+    std::string name(void) {
+        return _m_app_path_ + "/" + _m_pvd_id_;
+    }
+
+private:
+    std::shared_ptr<ICommunicator> _m_comm_;
+
+    std::string _m_app_path_;
+
+    std::string _m_pvd_id_;
+
+};
 
 
 constexpr const double CTimeSync::TIME_TREATE_AS_DISCONNACT;
@@ -71,6 +116,76 @@ CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func )
 CTimeSync::~CTimeSync( void ) {
     destroy_threads();
     clear();
+}
+
+/* Only for Client */
+bool CTimeSync::regist_keepalive( std::string peer_app, std::string peer_pvd, std::shared_ptr<ICommunicator>& comm ) {
+    bool result = true;
+    try {
+        std::shared_ptr<CServerInfo> server;
+        std::string full_path = alias_full_path(peer_app, peer_pvd);
+
+        if( comm.get() == NULL ) {
+            throw std::invalid_argument("communicator instance is NULL");
+        }
+
+        {
+            std::lock_guard<std::mutex>  guard(_mtx_servers_);
+            if( _mm_servers_.find(full_path) != _mm_servers_.end() ) {
+                LOGW("Already the peer(%s) is registered to Wanted-Peer list for KeepAlive-proc.", full_path.data());
+                return result;
+            }
+
+            // create CServerInfo
+            server = std::make_shared<CServerInfo>(peer_app, peer_pvd, comm);
+            if( server.get() == NULL ) {
+                throw std::runtime_error("Can not memory allocation to CServerInfo.");
+            }
+
+            // try to connect with peer & regist peer to wanted-list.
+            server->connect_try();
+            auto ret = _mm_servers_.insert(std::pair<std::string,std::shared_ptr<CServerInfo>>(full_path, server));
+            if( ret.second == false ) {
+                std::string err = "Can not insert new peer. Because already exist key.(" + full_path + ")";
+                throw std::logic_error(err);
+            }
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        result = false;
+    }
+
+    return result;
+}
+
+/* Only for Client */
+bool CTimeSync::unregist_keepalive( const std::string& peer_app, const std::string& peer_pvd ) {
+    try{
+        std::shared_ptr<CServerInfo> server;
+        std::string full_path = alias_full_path(peer_app, peer_pvd);
+        
+        {
+            std::lock_guard<std::mutex>  guard(_mtx_servers_);
+            // remove peer from _mm_servers_
+            auto itr = _mm_servers_.find( full_path );
+            if( itr == _mm_servers_.end() ) {
+                LOGW("peer(%s) is not exist.", full_path.data());
+                return false;
+            }
+
+            server = itr->second;
+            _mm_servers_.erase(itr);
+        }
+
+        // disconnect peer
+        server->disconnect();
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+    return true;
 }
 
 void CTimeSync::regist_failsafe(TFfailSafe func) {
@@ -228,6 +343,7 @@ void CTimeSync::clear(void) {
 
     // Thread routine variables
     _m_is_continue_ = false;       // Thread continue-flag.
+    _mm_servers_.clear();
     _mm_peers_.clear();
     _mm_unsynced_peers_.clear();
 }
@@ -360,11 +476,35 @@ int CTimeSync::run_keepalive(void) {    // Keep-Alive react Thread-routin.
             cur_time = 0;
         }
     };
+    auto lamda_check_wanted_connection = [&](void) {
+        std::vector<std::shared_ptr<CServerInfo>> wanted_list;
+        {
+            std::lock_guard<std::mutex>  guard(_mtx_servers_);
+            for( auto itr=_mm_servers_.begin(); itr!= _mm_servers_.end(); itr++ ) {
+                {
+                    std::lock_guard<std::mutex>  guard(_mtx_peers_);
+                    if( _mm_peers_.find(itr->first) != _mm_peers_.end() ) {
+                        continue;
+                    }
+                }
+
+                // insert server that is not yet connected with me.
+                wanted_list.push_back(itr->second);
+            }
+        }
+
+        // Try to connect with wanted servers.
+        for( auto itr=wanted_list.begin(); itr!=wanted_list.end(); itr++ ) {
+            LOGI("Try to reconnect to peer.(%s)", (*itr)->name().data());
+            (*itr)->connect_try();
+        }
+    };
 
     while(_m_is_continue_.load()) {
         try {
             update_peer();
             lamda_check_update_time();
+            lamda_check_wanted_connection();
 
             {
                 std::lock_guard<std::mutex>  guard(_mtx_peers_);
@@ -417,7 +557,7 @@ void CTimeSync::destroy_threads(void) {
     }
 }
 
-std::string CTimeSync::alias_full_path(std::string& app, std::string& pvd) {
+std::string CTimeSync::alias_full_path(const std::string& app, const std::string& pvd) {
     return app + "/" + pvd;
 }
 

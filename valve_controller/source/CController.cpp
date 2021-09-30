@@ -2,13 +2,14 @@
 #include <iostream>
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include <logger.h>
-#include <unistd.h>
+
 #include <CController.h>
 #include <IProtocolInf.h>
 #include <CException.h>
-#include <CCommunicator.h>
+// #include <CCommunicator.h>
 #include <time_kes.h>
 
 using namespace std;
@@ -21,11 +22,30 @@ constexpr const char* CController::CLOSE;
 /*********************************
  * Definition of Public Function.
  */
-CController::CController( CCommunicator* handler ){
+CController::CController( void ) {
     LOGD("Called.");
-    _comm_ = handler;
-    if( _comm_ == NULL ) {
+    clear();
+}
+
+CController::~CController(void) {
+    LOGD("Called.");
+    if( _comm_.get() != NULL ) {
+        soft_exit();
+        LOGD("Terminated.");
+    }
+    clear();
+}
+
+void CController::init(std::shared_ptr<::comm::MCommunicator>& comm) {
+    _comm_ = comm;
+    if( _comm_.get() == NULL ) {
         LOGERR("Communicator is NULL.");
+        throw CException(E_ERROR::E_ERR_INVALID_NULL_VALUE);
+    }
+
+    _m_myself_ = _comm_->get_myself();
+    if( _m_myself_.get() == NULL ) {
+        LOGERR("myself is NULL.");
         throw CException(E_ERROR::E_ERR_INVALID_NULL_VALUE);
     }
 
@@ -36,15 +56,8 @@ CController::CController( CCommunicator* handler ){
 
     _is_continue_ = false;
     _cmd_list_.clear();
-    set_state(E_STATE::E_NO_STATE, 0);
-}
 
-CController::~CController(void) {
-    LOGD("Called.");
-    if( _comm_ != NULL ) {
-        soft_exit();
-        LOGD("Terminated.");
-    }
+    create_threads();
 }
 
 void CController::soft_exit(void) {
@@ -56,20 +69,18 @@ void CController::soft_exit(void) {
     }
 
     _cmd_list_.clear();
-    set_state(E_STATE::E_NO_STATE, 0);
-    _comm_ = NULL;
+    _comm_.reset();
 }
 
 bool CController::create_threads(void) {
     _is_continue_ = true;
+    set_state(E_STATE::E_STATE_THR_CMD, 0);
 
     this->_runner_exe_cmd_ = std::thread(&CController::run_cmd_execute, this);
     if ( this->_runner_exe_cmd_.joinable() == false ) {
-        LOGW("run_cmd_execute thread creating is failed.");
+        LOGERR("run_cmd_execute thread creating is failed.");
         _is_continue_ = false;
-        set_state(E_STATE::E_STATE_THR_CMD, 0);
     }
-
     return _is_continue_;
 }
 
@@ -87,7 +98,6 @@ void CController::destroy_threads(void) {
     // Destroy of CMD-Execute thread.
     if(_runner_exe_cmd_.joinable() == true) {
         _runner_exe_cmd_.join();
-        set_state(E_STATE::E_STATE_THR_CMD, 0);
     }
 }
 
@@ -97,7 +107,7 @@ bool CController::apply_new_cmd(std::shared_ptr<CMDType> cmd) {
         auto cmds = decompose_cmd( cmd );
 
         for( auto itr=cmds.begin(); itr!=cmds.end(); itr++ ) {
-            res = insert_cmd( cmd );
+            res = insert_cmd( *itr );
             if( res == false ) {
                 throw std::runtime_error("Inserting CMDs is failed.");
             }
@@ -111,10 +121,37 @@ bool CController::apply_new_cmd(std::shared_ptr<CMDType> cmd) {
     return res;
 }
 
+void CController::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
+    try {
+        LOGD("Enter");
+        if( cmd.get() == NULL ) {
+            throw std::invalid_argument("Invalid CMD is NULL.");
+        }
+
+        // Invalid CMD checking
+        if( cmd->is_parsed() == false ) {
+            throw std::invalid_argument("CMD is not decoded.");
+        }
+
+        apply_new_cmd( std::dynamic_pointer_cast<CMDType>(cmd) );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
 
 /************************************
  * Definition of Private-Function.
  */
+void CController::clear(void) {
+    _comm_.reset();
+    _is_continue_=false;       // Thread continue-flag.
+    _cmd_list_.clear();     // cmd encode/decode for valve-controling.
+    _gpio_root_path_.clear();
+    _m_myself_.reset();
+}
+
 bool CController::init_gpio_root(void) {
     const char* VALVE_GPIO_ROOT = getenv("VALVE_GPIO_ROOT");
     if( VALVE_GPIO_ROOT == NULL ) {
@@ -128,30 +165,33 @@ bool CController::init_gpio_root(void) {
 
 std::shared_ptr<CController::CMDlistType> CController::try_task_decision(void) {
     // Search Task-List to do task.
-    cmd::E_CMPTIME cmd_time_state = cmd::E_CMPTIME::E_CMPTIME_UNKNOWN;
-    std::shared_ptr<CMDType> valve_cmd;
-    CMDlistType::iterator itor;
-    CMDlistType::iterator itor_past;
+    unsigned int count = 0;
     std::shared_ptr<CMDlistType> cmds_to_exe = std::make_shared<CMDlistType>();
 
-    std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
-    itor = _cmd_list_.begin();
+    try {
+        std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
+        auto itor = _cmd_list_.begin();
 
-    while( itor != _cmd_list_.end() ) {
-        valve_cmd.reset();
-        valve_cmd = *itor;
+        while( itor != _cmd_list_.end() ) {
+            auto valve_cmd = *itor;
+            count++;
+            if( count > _cmd_list_.size() ) {
+                std::string err = "Inserted CMD count(" + std::to_string(count) + ") is over than size of original CMD-List.(" + std::to_string(_cmd_list_.size()) + ")";
+                throw std::logic_error(err);
+            }
 
-        cmd_time_state = valve_cmd->compare_with_curtime();
-        if ( cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_EQUAL ||
-             cmd_time_state == cmd::E_CMPTIME::E_CMPTIME_UNDER ) {
+            if( valve_cmd->compare_with_curtime() == cmd::E_CMPTIME::E_CMPTIME_OVER ) {
+                break;
+            }
+
+            LOGI("Insert \"CMD_%u\" to execute command.", count);
             cmds_to_exe->push_back(valve_cmd);
-            itor_past = itor;
-            itor++;
-            _cmd_list_.erase(itor_past);
+            itor = _cmd_list_.erase(itor);
         }
-        else {
-            break;
-        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
     }
 
     return cmds_to_exe;
@@ -218,7 +258,7 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
     std::string t_gpio;
     int t_gpio_value = 1;
 
-    assert( _comm_ != NULL );
+    assert( _comm_.get() != NULL );
     assert( valve_cmd.get() != NULL );
     // assert( valve_cmd->parsing_complet() == true );
 
@@ -251,9 +291,10 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
         }
 
         // write GPIO with value.
-        if( (result = valve_set(t_gpio, t_gpio_value))==true && power==E_PWR::E_PWR_ENABLE ) {
+        result = valve_set(t_gpio, t_gpio_value);
+        if( result==true && power==E_PWR::E_PWR_ENABLE ) {
             // if need it, then send ACT_START message to server.
-            if( _comm_->conditional_send_act_start(valve_cmd) != true ) {
+            if( _comm_->notify_action_start(valve_cmd->get_from(), valve_cmd->get_id(), E_STATE::E_STATE_THR_CMD) != true ) {
                 LOGERR("Can not send ACT-Start message.");
                 throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_START);
             }
@@ -404,14 +445,13 @@ bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
 
         // insert cmd to list.
         _cmd_list_.insert(itor, cmd);
-        return true;
     }
     catch (const std::exception &e) {
         LOGERR("%s", e.what());
         throw e;
     }
     
-    return false;
+    return true;
 }
 
 CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd) {
@@ -463,8 +503,6 @@ int CController::run_cmd_execute(void) {
     int send_count = 0;
     std::shared_ptr<CMDlistType> cmds;
 
-    set_state(E_STATE::E_STATE_THR_CMD, 1);
-
     while(_is_continue_) {
         cmds.reset();
 
@@ -478,26 +516,14 @@ int CController::run_cmd_execute(void) {
         // wait 300 ms
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
-
-    set_state(E_STATE::E_STATE_THR_CMD, 0);
 }
 
 void CController::set_state(E_STATE pos, StateType value) {
-    if( _comm_ == NULL ) {
-        LOGERR("Communicator is NULL.");
-        throw CException(E_ERROR::E_ERR_INVALID_NULL_VALUE);
-    }
-
-    _comm_->set_state(pos, value);
+    _m_myself_->set_state(pos, value);
 }
 
 common::StateType CController::get_state(E_STATE pos) {
-    if( _comm_ == NULL ) {
-        LOGERR("Communicator is NULL.");
-        throw CException(E_ERROR::E_ERR_INVALID_NULL_VALUE);
-    }
-
-    return _comm_->get_state(pos);
+    return _m_myself_->get_state(pos);
 }
 
 
