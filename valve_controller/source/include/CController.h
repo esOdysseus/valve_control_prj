@@ -21,7 +21,7 @@ public:
     using CMDType = cmd::CuCMD;
     using CMDlistType = std::list<std::shared_ptr<CMDType>>;
     using E_PWR = enum E_PWR {
-        E_PWR_DISENABLE = 0,
+        E_PWR_DISABLE = 0,
         E_PWR_ENABLE = 1
     };
     using E_GPIO = enum E_GPIO {
@@ -65,8 +65,6 @@ public:
 
     void destroy_threads(void);
 
-    bool apply_new_cmd(std::shared_ptr<CMDType> cmd);
-
     void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
 
 private:
@@ -81,7 +79,12 @@ private:
 
     StateType get_state(E_STATE pos);
 
-    std::shared_ptr<CMDlistType> try_task_decision(void);
+    bool push_cmd(std::shared_ptr<CMDType> cmd);
+
+    /** Functions with regard to CMD */
+    bool insert_cmd(std::shared_ptr<CMDType> cmd);
+
+    std::shared_ptr<CMDlistType> pop_tasks(void);
 
     void execute_cmds(std::shared_ptr<CMDlistType> &cmds);
 
@@ -90,9 +93,6 @@ private:
     std::string get_gpio_path(std::shared_ptr<CMDType> &valve_cmd);
 
     bool valve_set(std::string gpio_path, int value);
-
-    /** Functions with regard to CMD */
-    bool insert_cmd(std::shared_ptr<CMDType> cmd);
 
     CMDlistType decompose_cmd(std::shared_ptr<CMDType> cmd);
 

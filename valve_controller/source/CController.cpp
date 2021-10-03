@@ -101,26 +101,6 @@ void CController::destroy_threads(void) {
     }
 }
 
-bool CController::apply_new_cmd(std::shared_ptr<CMDType> cmd) {
-    bool res = false;
-    try {
-        auto cmds = decompose_cmd( cmd );
-
-        for( auto itr=cmds.begin(); itr!=cmds.end(); itr++ ) {
-            res = insert_cmd( *itr );
-            if( res == false ) {
-                throw std::runtime_error("Inserting CMDs is failed.");
-            }
-        }
-    }
-    catch( const std::exception& e ) {
-        LOGERR("%s", e.what());
-        res = false;
-    }
-
-    return res;
-}
-
 void CController::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
     try {
         LOGD("Enter");
@@ -133,7 +113,7 @@ void CController::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
             throw std::invalid_argument("CMD is not decoded.");
         }
 
-        apply_new_cmd( std::dynamic_pointer_cast<CMDType>(cmd) );
+        push_cmd( std::dynamic_pointer_cast<CMDType>(cmd) );
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -163,7 +143,58 @@ bool CController::init_gpio_root(void) {
     return true;
 }
 
-std::shared_ptr<CController::CMDlistType> CController::try_task_decision(void) {
+bool CController::push_cmd(std::shared_ptr<CMDType> cmd) {
+    bool res = false;
+    try {
+        auto cmds = decompose_cmd( cmd );
+
+        for( auto itr=cmds.begin(); itr!=cmds.end(); itr++ ) {
+            res = insert_cmd( *itr );
+            if( res == false ) {
+                throw std::runtime_error("Inserting CMDs is failed.");
+            }
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        res = false;
+    }
+
+    return res;
+}
+
+bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
+    CMDlistType::iterator itor;
+    cmd::E_CMPTIME state;
+    assert( cmd.get() != NULL );
+    // assert( cmd->parsing_complet() == true );
+
+    try {
+        std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
+        itor = _cmd_list_.begin();
+
+        while( itor != _cmd_list_.end() ) {
+            // search position in _cmd_list_.
+            state = (*(itor))->compare_with_another(cmd.get(), 0.0);
+            assert( state != cmd::E_CMPTIME::E_CMPTIME_UNKNOWN);
+            if ( state == cmd::E_CMPTIME::E_CMPTIME_OVER )
+                break;
+            
+            itor++;
+        }
+
+        // insert cmd to list.
+        _cmd_list_.insert(itor, cmd);
+    }
+    catch (const std::exception &e) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+    
+    return true;
+}
+
+std::shared_ptr<CController::CMDlistType> CController::pop_tasks(void) {
     // Search Task-List to do task.
     unsigned int count = 0;
     std::shared_ptr<CMDlistType> cmds_to_exe = std::make_shared<CMDlistType>();
@@ -239,7 +270,7 @@ void CController::execute_cmds(std::shared_ptr<CMDlistType> &cmds) {
                 }
                 
                 std::this_thread::sleep_for(std::chrono::seconds(wait_sec));
-                if( execute_valve_cmd(cmd, E_PWR::E_PWR_DISENABLE) != true ) {
+                if( execute_valve_cmd(cmd, E_PWR::E_PWR_DISABLE) != true ) {
                     LOGERR("Executing valve-command is failed.");
                 }
             }, valve_cmd);
@@ -285,21 +316,30 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
         case E_PWR::E_PWR_ENABLE:
             t_gpio_value = 0;
             break;
-        case E_PWR::E_PWR_DISENABLE:
+        case E_PWR::E_PWR_DISABLE:
             t_gpio_value = 1;
             break;
         }
 
         // write GPIO with value.
         result = valve_set(t_gpio, t_gpio_value);
-        if( result==true && power==E_PWR::E_PWR_ENABLE ) {
+        if( result == false ) {
+            throw std::runtime_error("Failed write GPIO for valve-control.");
+        }
+
+        if( power==E_PWR::E_PWR_ENABLE && (valve_cmd->get_state() & E_STATE::E_STATE_REACT_ACTION_START) ) {
             // if need it, then send ACT_START message to server.
             if( _comm_->notify_action_start(valve_cmd->get_from(), valve_cmd->get_id(), E_STATE::E_STATE_THR_CMD) != true ) {
                 LOGERR("Can not send ACT-Start message.");
                 throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_START);
             }
-
-            // TODO if need it, then we have to send ACT_DONE message to server.
+        }
+        else if( power==E_PWR::E_PWR_DISABLE && (valve_cmd->get_state() & E_STATE::E_STATE_REACT_ACTION_DONE) ) {
+            // if need it, then we have to send ACT_DONE message to server.
+            if( _comm_->notify_action_done(valve_cmd->get_from(), valve_cmd->get_id(), E_STATE::E_STATE_THR_CMD) != true ) {
+                LOGERR("Can not send ACT-Done message.");
+                throw CException(E_ERROR::E_ERR_FAIL_SENDING_ACT_DONE);
+            }
         }
     }
     catch (const std::exception &e) {
@@ -383,35 +423,36 @@ bool CController::valve_set(std::string gpio_path, int value) {
     assert( gpio_path.empty() == false );
     assert( value == 0 || value == 1 );
     
-    // run command
-    if ( system(NULL) ) {
-        assert( (buf_size = 10+gpio_path.length()+1) > 11 );
-        assert( (buf = new char[buf_size]) != NULL );
+    try {
+        // run command
+        if ( system(NULL) ) {
+            assert( (buf_size = 10+gpio_path.length()+1) > 11 );
+            assert( (buf = new char[buf_size]) != NULL );
 
-        assert( snprintf(buf, buf_size, "echo %d > %s", value, gpio_path.c_str()) > 0 );
-        LOGD("command: [%s]", buf);
-        sys_output = system(buf);
-        switch( sys_output ) {    // run command as bash shell
-        case -1:
-            LOGW("There is Error when you run command in system.");
-            throw CException(E_ERROR::E_ERR_FAIL_RUNNING_CMD);
-            break;
-        case 127:
-            LOGW("/bin/sh invoking is failed.");
-            throw CException(E_ERROR::E_ERR_FAIL_INVOKING_SHELL);
-        default:
-            LOGI("Output of system(%s) is [%d].", buf, sys_output);
-            result = true;
+            assert( snprintf(buf, buf_size, "echo %d > %s", value, gpio_path.c_str()) > 0 );
+            LOGD("command: [%s]", buf);
+            sys_output = system(buf);
+            switch( sys_output ) {    // run command as bash shell
+            case -1:
+                LOGW("There is Error when you run command in system.");
+                throw CException(E_ERROR::E_ERR_FAIL_RUNNING_CMD);
+                break;
+            case 127:
+                LOGW("/bin/sh invoking is failed.");
+                throw CException(E_ERROR::E_ERR_FAIL_INVOKING_SHELL);
+            default:
+                LOGI("Output of system(%s) is [%d].", buf, sys_output);
+                result = true;
+            }
+        }
+        else {
+            LOGW("Command Processor is not available.");
+            throw CException(E_ERROR::E_ERR_FAIL_CHECKING_CMD_PROC);
         }
     }
-    else {
-        LOGW("Command Processor is not available.");
-        // delete heap memory.
-        if( buf ) {
-            delete[] buf;
-            buf = NULL;
-        }
-        throw CException(E_ERROR::E_ERR_FAIL_CHECKING_CMD_PROC);
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        result = false;
     }
 
     // delete heap memory.
@@ -419,39 +460,7 @@ bool CController::valve_set(std::string gpio_path, int value) {
         delete[] buf;
         buf = NULL;
     }
-
     return result;
-}
-
-bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
-    CMDlistType::iterator itor;
-    cmd::E_CMPTIME state;
-    assert( cmd.get() != NULL );
-    // assert( cmd->parsing_complet() == true );
-
-    try {
-        std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
-        itor = _cmd_list_.begin();
-
-        while( itor != _cmd_list_.end() ) {
-            // search position in _cmd_list_.
-            state = (*(itor))->compare_with_another(cmd.get(), 0.0);
-            assert( state != cmd::E_CMPTIME::E_CMPTIME_UNKNOWN);
-            if ( state == cmd::E_CMPTIME::E_CMPTIME_OVER )
-                break;
-            
-            itor++;
-        }
-
-        // insert cmd to list.
-        _cmd_list_.insert(itor, cmd);
-    }
-    catch (const std::exception &e) {
-        LOGERR("%s", e.what());
-        throw e;
-    }
-    
-    return true;
 }
 
 CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd) {
@@ -471,19 +480,29 @@ CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd
         }
 
         // Insert commands
-        cmds.push_back( cmd );
         if( method == Tvalve_method::E_OPEN ) {
             // sub_cmd의 method, 실행시간 수정. (Close)
             auto cmd_when = cmd->when();
-            double close_time = cmd_when.get_start_time() + costtime;
+            double stime = cmd_when.get_start_time() + costtime;
             auto sub_cmd = std::make_shared<CMDType>( *cmd );
             if( sub_cmd.get() == NULL ) {
                 throw std::runtime_error("sub_cmd memory-allocation is failed.");
             }
             
             sub_cmd->set_how( CLOSE );
-            sub_cmd->set_when( cmd_when.get_type(), close_time );
+            sub_cmd->set_when( cmd_when.get_type(), stime );
+
+            // Set Internal-State & push CMD.
+            cmd->set_state( cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_START );
+            sub_cmd->set_state( sub_cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_DONE );
+            cmds.push_back( cmd );
             cmds.push_back( sub_cmd );
+        }
+        else if( method == Tvalve_method::E_CLOSE ) {
+            // Set Internal-State & push CMD.
+            StateType state = cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_START | E_STATE::E_STATE_REACT_ACTION_DONE;
+            cmd->set_state( state );
+            cmds.push_back( cmd );
         }
     }
     catch( const std::exception& e ) {
@@ -507,7 +526,7 @@ int CController::run_cmd_execute(void) {
         cmds.reset();
 
         // Check Current-Tasks & execute thoese.
-        cmds = try_task_decision();
+        cmds = pop_tasks();
         if ( cmds->size() > 0 ) {
             execute_cmds(cmds);
             cmds.reset();

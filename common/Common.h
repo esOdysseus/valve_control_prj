@@ -38,6 +38,10 @@ typedef enum E_STATE {
     /** for announcing System/Task Error */
     E_STATE_OCCURE_ERROR    = 0x0040,   // [Global-Set] If Unintended-System Error is occured, then this state set.
     E_STATE_ACTION_FAIL     = 0x0080,   // [Global-Set] 0: not exist means  , 1: fail with action
+    
+    /** for reaction-sending corresponded with TASK */
+    E_STATE_REACT_ACTION_START  = 0x1000,   // [Internal-Use] It need to send ACTION-START packet to peer.
+    E_STATE_REACT_ACTION_DONE   = 0x2000,   // [Internal-Use] It need to send ACTION-DONE packet to peer.
     E_STATE_ALL             = 0xFFFF
 } E_STATE;
 

@@ -503,6 +503,7 @@ void MCommunicator::call_listeners( std::string& pvd_id, std::shared_ptr<CMDType
         }
 
         for( auto itr_list=itr->second.begin(); itr_list != itr->second.end(); itr_list++ ) {
+            // TODO decompose CMD to CMD-List for Tasks
             (*itr_list)(rcmd);
         }
     }
