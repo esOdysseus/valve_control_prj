@@ -470,8 +470,12 @@ CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd
     }
 
     try {
+        StateType state = cmd->get_state();
         auto& method = cmd->how().valve_method_pre();
         double costtime = cmd->how().valve_costtime();
+
+        // Init State
+        state = state & ~(E_STATE::E_STATE_REACT_ACTION_START | E_STATE::E_STATE_REACT_ACTION_DONE);
 
         // Check invalid command.
         if ( method == Tvalve_method::E_OPEN && costtime <= (double)WAITSEC_VALVE_OPEN ) {
@@ -493,14 +497,14 @@ CController::CMDlistType CController::decompose_cmd(std::shared_ptr<CMDType> cmd
             sub_cmd->set_when( cmd_when.get_type(), stime );
 
             // Set Internal-State & push CMD.
-            cmd->set_state( cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_START );
-            sub_cmd->set_state( sub_cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_DONE );
+            cmd->set_state( state | E_STATE::E_STATE_REACT_ACTION_START );
+            sub_cmd->set_state( state | E_STATE::E_STATE_REACT_ACTION_DONE );
             cmds.push_back( cmd );
             cmds.push_back( sub_cmd );
         }
         else if( method == Tvalve_method::E_CLOSE ) {
             // Set Internal-State & push CMD.
-            StateType state = cmd->get_state() | E_STATE::E_STATE_REACT_ACTION_START | E_STATE::E_STATE_REACT_ACTION_DONE;
+            state = state | E_STATE::E_STATE_REACT_ACTION_START | E_STATE::E_STATE_REACT_ACTION_DONE;
             cmd->set_state( state );
             cmds.push_back( cmd );
         }
