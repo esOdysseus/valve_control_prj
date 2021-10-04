@@ -1,5 +1,6 @@
-#include <CService.h>
+#include <unistd.h>
 
+#include <CService.h>
 #include <logger.h>
 
 using namespace std::placeholders;
@@ -48,6 +49,7 @@ void CService::start( void ) {
         }
 
         _m_comm_mng_->start();
+        sleep(1);
         if( _m_comm_mng_->connect_auto( PEER_CMD_SCHEDULER, PEER_PROVIDER, PVD_COMMANDER ) == false ) {
             throw std::runtime_error("Can not start Connect-thread for peer(CMD-SCHEDULER).");
         }
@@ -60,7 +62,10 @@ void CService::start( void ) {
 
 void CService::exit( void ) {
     LOGW("Enter.");
-    _m_comm_mng_->disconnect( PEER_CMD_SCHEDULER, PEER_PROVIDER );
+    if( _m_comm_mng_.get() != NULL ) {
+        _m_comm_mng_->disconnect( PEER_CMD_SCHEDULER, PEER_PROVIDER );
+        _m_comm_mng_.reset();
+    }
     _m_ctrller_.soft_exit();
     clear();
 }

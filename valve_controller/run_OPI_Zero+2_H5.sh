@@ -4,6 +4,7 @@ __PROG_ROOT_PATH__=/home/eunseok/project/app/valve_controller
 __LIB_ROOT_PATH__=/home/eunseok/project/fw/communicator/debug
 
 function runner_set_env() {
+    export MACHINE_DEVICE_NAME="Machine-Valve-0x123457"
     export VALVE_GPIO_ROOT=/sys/class/gpio
     export LD_LIBRARY_PATH=${__LIB_ROOT_PATH__}/lib:${LD_LIBRARY_PATH}
 }

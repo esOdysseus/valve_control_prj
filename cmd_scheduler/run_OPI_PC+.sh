@@ -5,6 +5,7 @@ BUILD_MODE=debug
 COMM_ROOT=/root/project/fw/communicator/${BUILD_MODE}
 
 
+export MACHINE_DEVICE_NAME="Machine-0x123456"
 export LD_LIBRARY_PATH=${COMM_ROOT}/lib:${LD_LIBRARY_PATH}
 
 

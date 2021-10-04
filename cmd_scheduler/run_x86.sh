@@ -9,8 +9,12 @@ function runner_set_env() {
 }
 
 function runner_start_program() {
+    local BUILD_MODE=release
     local TODAY_DATE=${1}
-    local BUILD_MODE=${2}
+    if [ ! -z ${2} ]; then
+        BUILD_MODE=${2}
+    fi
+
     local LOG_FILE_NAME=log_${PROG_NAME}_${TODAY_DATE}.txt
     local PROG_FULL_PATH=${__PROG_ROOT_PATH__}/../${BUILD_MODE}/cmd_scheduler/bin
     local ALIAS_FILE_PATH=${__PROG_ROOT_PATH__}/../common/lib/communicator/config/desp_alias.json
