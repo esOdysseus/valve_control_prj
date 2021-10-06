@@ -1,5 +1,5 @@
 QMAKE_PRL_BUILD_DIR = /home/eunseok/project/project_2021/workspace/vscode/common_communicator/build/protocol
 QMAKE_PRO_INPUT = protocol.pro
 QMAKE_PRL_TARGET = libproto.so.0.2.1
-QMAKE_PRL_CONFIG = c++11 release shared create_pc create_prl no_install_prl have_target dll
+QMAKE_PRL_CONFIG = c++11 debug shared create_pc create_prl no_install_prl have_target dll debug_info
 QMAKE_PRL_VERSION = 0.2.1

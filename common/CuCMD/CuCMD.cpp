@@ -147,14 +147,14 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         // Check ab-normal state & set flag
         if ( _state_ & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR | E_STATE::E_STATE_ACTION_FAIL) ) {
             _flag_ |= E_FLAG::E_FLAG_STATE_ERROR;
+            LOGERR("Occur State-Error. Please check it.(state = 0x%X)", _state_);
         }
 
         protocol->set_property("flag", _flag_);
         protocol->set_property("state", _state_);
         protocol->set_property("msg_id", _msg_id_);
 
-        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR) == 0 && 
-             get_flag(E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_KEEPALIVE) == 0 ) {
+        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_ACTION_START) == 0 ) {
             const char* body = NULL;
             Json_DataType json_manager;
 
@@ -209,16 +209,19 @@ std::shared_ptr<payload::CPayload> CuCMD::force_encode( std::shared_ptr<ICommuni
         // Check ab-normal state & set flag
         if ( state & (E_STATE::E_STATE_OUT_OF_SERVICE | E_STATE::E_STATE_OCCURE_ERROR | E_STATE::E_STATE_ACTION_FAIL) ) {
             flag |= E_FLAG::E_FLAG_STATE_ERROR;
+            LOGERR("Occur State-Error. Please check it.(state = 0x%X)", state);
         }
         
         protocol->set_property("flag", flag);
         protocol->set_property("state", state);
         protocol->set_property("msg_id", msg_id);
 
-        if ( (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_STATE_ERROR)) == 0 ) {
+        LOGI("flag=0x%X", flag);
+        if ( (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_ACK_MSG)) == 0 ) {
             if( payload.empty() == true ) {
                 throw std::invalid_argument("payload is empty.");
             }
+            LOGI("payload=%s", payload.data());
             protocol->set_payload( payload.c_str(), payload.length() );
         }
     }

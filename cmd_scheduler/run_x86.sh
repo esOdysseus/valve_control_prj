@@ -9,10 +9,14 @@ function runner_set_env() {
 }
 
 function runner_start_program() {
-    local BUILD_MODE=release
     local TODAY_DATE=${1}
+    local BUILD_MODE=release
     if [ ! -z ${2} ]; then
         BUILD_MODE=${2}
+    fi
+    local LOGGING="true"
+    if [ ! -z ${3} ]; then
+        LOGGING=${3}
     fi
 
     local LOG_FILE_NAME=log_${PROG_NAME}_${TODAY_DATE}.txt
@@ -21,7 +25,18 @@ function runner_start_program() {
     local PROTO_FILE_PATH=${__PROG_ROOT_PATH__}/../common/lib/communicator/config/desp_UniversalCMD_protocol.json
 
     cd ${PROG_FULL_PATH}
-    ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
-    ./${PROG_NAME} ${ALIAS_FILE_PATH} ${PROTO_FILE_PATH} >& ./${LOG_FILE_NAME} & echo $!
+    if [ ${LOGGING} == "true" ]; then
+        ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
+        ./${PROG_NAME} ${ALIAS_FILE_PATH} ${PROTO_FILE_PATH} >& ./${LOG_FILE_NAME} & echo $!
+    else
+        ./${PROG_NAME} ${ALIAS_FILE_PATH} ${PROTO_FILE_PATH}
+    fi
+}
+
+function run_sample() {
+    local TODAY=$(date +"%F_%T")
+    
+    runner_set_env
+    runner_start_program ${TODAY} ${1} "false"
 }
 
