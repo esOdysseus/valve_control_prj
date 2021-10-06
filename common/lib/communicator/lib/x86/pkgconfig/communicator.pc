@@ -6,7 +6,7 @@ includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/de
 
 Name: communicator
 Description: Common-communicator SDK library that support transaction-orient & service-orient.
-Version: 0.2.9
+Version: 0.2.10
 Libs: -L${libdir} -lcommunicator 
 Libs.private: -ldl -lpthread   
 Cflags: -I${includedir}

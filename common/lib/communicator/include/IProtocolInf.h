@@ -32,6 +32,9 @@ public:
 
     ~IProtocolInf(void);
 
+    /** Who is owner about this packet. */
+    virtual std::string who_is_owner( void );
+
     /** Get Keys for properties. */
     virtual std::shared_ptr<std::list<std::string>> get_keys(void);
 

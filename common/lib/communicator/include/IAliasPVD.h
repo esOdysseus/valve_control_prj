@@ -34,6 +34,9 @@ namespace cf_alias {
 
         std::string path_parent( void );
 
+        // setter
+        void update( std::string& parent, std::string& name );
+
         enum_c::AliasType alias_type( void );
 
         static std::string make_full_path(std::string &app_path, std::string &pvd_path);
