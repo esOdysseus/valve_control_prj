@@ -41,7 +41,8 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/lock    \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot \
-    $$COMMON_LIB_ROOT/lib/time
+    $$COMMON_LIB_ROOT/lib/time      \
+    $$COMMON_LIB_ROOT/lib/uart
 
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
@@ -49,7 +50,8 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/CuCMD/*.cpp)   \
-    $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp)
+    $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp)    \
+    $$files($$COMMON_LIB_ROOT/lib/uart/*.cpp)
 
 # for installation.
 EXTRA_BINFILES = \

@@ -569,6 +569,8 @@ double CTimeSync::get_time_src(void) {
 }
 
 bool CTimeSync::set_system_time( double time ) {
+    bool result = false;
+
     if ( time <= 0.0 ) {
         LOGW("\"time(%f)\" is invalid value.", time);
         return false;
@@ -577,7 +579,11 @@ bool CTimeSync::set_system_time( double time ) {
 #ifdef TEST_MODE_ENABLE
     return true;
 #else
-    return ::time_pkg::CTime::set( time );
+    result = ::time_pkg::CTime::set( time );
+    if( result == true ) {
+        _m_gps_.reset();
+    }
+    return result;
 #endif
 }
 

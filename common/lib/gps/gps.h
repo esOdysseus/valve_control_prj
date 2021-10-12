@@ -1,6 +1,15 @@
 #ifndef _H_CLASS_GPS_LIBRARY_
 #define _H_CLASS_GPS_LIBRARY_
 
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <condition_variable>
+#include <atomic>
+#include <vector>
+
+#include <uart.h>
+
 /******************
  * GPS library class
  * 
@@ -11,26 +20,35 @@
  * 
  *  - Assumption
  *      1. GPS-module communication Port: Uart
- * 
- *  - Reference Site
- *      1. https://imsoftpro.tistory.com/48
- *      2. https://codingcoding.tistory.com/643
- */
+  */
 namespace gps_pkg {
 
 
-class Cgps {
+class Cgps: public uart::IUart {
 public:
-    using Tbr = enum class _enum_baud_rate_ {
-        E_BR_NONE = 0,
-        E_BR_9600,
-        E_BR_115200
-    };
+    class Gps {
+    public:
+        double time_sys;    // System-time when gps-time is updated by GPS-module.
+        double time_gps;    // Latest gps-time that is updated by GPS-module.
+        double latitude;    // 위도
+        double longitude;   // 경도
+        double altitude;    // 고도
 
-private:
-    using TState = enum class _enum_state_ {
-        E_STATE_INACTIVE = 0,
-        E_STATE_ACTIVE
+        Gps(void) {
+            time_sys == 0.0;
+            time_gps == 0.0;
+            latitude == 0.0;
+            longitude == 0.0;
+            altitude == 0.0;
+        }
+        ~Gps(void) = default;
+
+        bool check_validation(void) {
+            if( time_sys == 0.0 || time_gps == 0.0 || latitude == 0.0 || longitude == 0.0 || altitude == 0.0 ) {
+                return false;
+            }
+            return true;
+        }
     };
 
 public:
@@ -42,19 +60,39 @@ public:
 
     bool is_active(void);
 
+    /** Get GPS-Time */
     double get_time(void);
+
+    /** Get GPS-Position */
+    std::shared_ptr<Gps> get_gps(void);
 
 private:
     Cgps(void) = delete;
 
     void clear(void);
 
+    void set_gps( std::shared_ptr<Gps> gps );
+
+    std::shared_ptr<Gps> parse_data( std::vector<uint8_t>& data, double sys_time );
+
+    /** Thread related function */
+    void create_threads(void);
+
+    void destroy_threads(void);
+
+    void handle_gps_rx(void);
+
 private:
     TState _m_state_;               // State of GPS-module. [ In-Active, Active ]
 
-    double _m_latest_gps_time_;     // Latest gps-time that is updated by GPS-module.
+    /** GPS-result */
+    std::mutex _mtx_gps_;
+    std::condition_variable _mcv_gps_;
+    std::shared_ptr<Gps> _m_gps_;   // latest GPS result
 
-    double _m_latest_sys_time_;     // System-time when gps-time is updated by GPS-module.
+    /** GPS-receiving thread */
+    std::atomic<bool> _m_is_continue_;
+    std::thread _m_gps_receiver_;
 
 };
 

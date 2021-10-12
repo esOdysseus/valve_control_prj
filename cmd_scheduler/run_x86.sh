@@ -24,16 +24,20 @@ function runner_start_program() {
     local ALIAS_FILE_PATH=${__PROG_ROOT_PATH__}/../common/lib/communicator/config/desp_alias.json
     local PROTO_FILE_PATH=${__PROG_ROOT_PATH__}/../common/lib/communicator/config/desp_UniversalCMD_protocol.json
 
+    local CUR_PATH=${PWD}
     cd ${PROG_FULL_PATH}
+    
     if [ ${LOGGING} == "true" ]; then
         ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
         ./${PROG_NAME} ${ALIAS_FILE_PATH} ${PROTO_FILE_PATH} >& ./${LOG_FILE_NAME} & echo $!
     else
         ./${PROG_NAME} ${ALIAS_FILE_PATH} ${PROTO_FILE_PATH}
     fi
+    
+    cd ${CUR_PATH}
 }
 
-function run_sample() {
+function __run_sample__() {
     local TODAY=$(date +"%F_%T")
     
     runner_set_env

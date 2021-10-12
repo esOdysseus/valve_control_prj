@@ -132,7 +132,7 @@ private:
     static constexpr const int64_t TIME_SEND_PERIOD_KEEPALIVE = 5;
     static constexpr const int64_t TIME_UPDATE_PERIOD = 60;
     static constexpr const double TIME_INTERVAL_THRESOLDER = 0.2;
-    static constexpr const char* GPS_UART_PATH = "/dev/ttyS1";
+    static constexpr const char* GPS_UART_PATH = "/dev/ttyUSB0";
 
 };
 

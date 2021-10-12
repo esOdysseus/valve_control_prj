@@ -23,7 +23,7 @@ DEFINES += VER_MIN=$$VER_MIN
 DEFINES += VER_PAT=$$VER_PAT
 
 # for testing at X86
-DEFINES += TEST_MODE_ENABLE
+# DEFINES += TEST_MODE_ENABLE
 
 equals(BUILD_MODE, "debug") {
     DEFINES += LOG_TIME_ENABLE
@@ -45,6 +45,7 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/logger  \
     $$COMMON_LIB_ROOT/lib/sys_sigslot    \
     $$COMMON_LIB_ROOT/lib/time    \
+    $$COMMON_LIB_ROOT/lib/uart    \
     $$COMMON_LIB_ROOT/lib/sqlite    \
     $$COMMON_LIB_ROOT/principle    \
     $$_PRO_FILE_PWD_/source/include
@@ -57,6 +58,7 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/CuCMD/*.cpp)   \
     $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp) \
     $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp) \
+    $$files($$COMMON_LIB_ROOT/lib/uart/*.cpp) \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)
     
 
