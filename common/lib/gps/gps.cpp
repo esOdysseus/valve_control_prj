@@ -5,6 +5,8 @@
 
 namespace gps_pkg {
 
+constexpr const char* Cgps::NMEA0183_PREFIX;
+
 
 /*******************************
  * Public Function Definition.
@@ -137,8 +139,8 @@ void Cgps::set_gps( std::shared_ptr<Gps> gps ) {
     }
 }
 
-std::shared_ptr<Cgps::Gps> Cgps::parse_data( std::vector<uint8_t>& data, double sys_time ) {
-    std::shared_ptr<Cgps::Gps> result;
+bool Cgps::parse_data( std::vector<uint8_t>& data, double sys_time, std::shared_ptr<Gps>& gps ) {
+    bool result = false;
     LOGI("Parse GPS-data.");
 
     try {
@@ -148,9 +150,75 @@ std::shared_ptr<Cgps::Gps> Cgps::parse_data( std::vector<uint8_t>& data, double 
         }
 
         std::string msg(data.begin(), data.end());
-        LOGW("msg=%s", msg.c_str());
-        // throw std::logic_error("Not Implement Yet.");
-        ;   // TODO 
+        // msg = "$GNRMC,074910.00,A,2235.51781,N,11353.51624,E,0.008,,231216,,,D*60";     // TODO temporary Code
+        LOGI("msg=%s", msg.c_str());
+
+        // parse NMEA-0183 protocol.
+        gps.reset();
+        gps = parse_NMEA0183(msg);
+        if( gps.get() != NULL ) {
+            gps->time_sys = sys_time;
+            result = gps->check_validation();
+            if( result == false ) {
+                gps.reset();
+                LOGW("Validation Checking is failed.");
+            }
+        }
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+
+    return result;
+}
+
+std::shared_ptr<Cgps::Gps> Cgps::parse_NMEA0183( std::string& msg ) {
+    std::shared_ptr<Cgps::Gps> result;
+    try {
+        std::string time;
+        double d_time = 0.0;
+        std::vector<std::string> contents;
+        size_t leng = sizeof(NMEA0183_PREFIX);
+        size_t idx = msg.find(NMEA0183_PREFIX);
+        if( idx == std::string::npos ) {
+            LOGW("It's not NMEA0183 Protocol.");
+            return result;
+        }
+
+        do {    // Split contents according with delimiter ','
+            idx = msg.find(',',leng);
+
+            if( idx == std::string::npos ) {
+                LOGW("End of NMEA0183 msg.");
+                contents.push_back(msg.substr(leng, std::string::npos));
+            } else if( idx-leng == 0 ) {
+                contents.push_back(std::string());
+            } else {
+                contents.push_back(msg.substr(leng, idx-leng));
+            }
+
+            leng = idx + 1;
+        } while( idx != std::string::npos );
+
+        // Check validation
+        if( contents[1] != "A" ) {
+            LOGW("It's not invalid GPS-data.");
+            return result;
+        }
+
+        // Make GPS-data
+        result = std::make_shared<Gps>();
+        if( result.get() == NULL ) {
+            throw std::runtime_error("Can not allocate memory to GPS.");
+        }
+        time = contents[0].substr(0,6); // We only need HHMMSS
+        d_time = std::stod(time);
+        result->time_gps = ::time_pkg::CTime::convert<double>(time, contents[8].data(),"%H%M%S", "%d%m%y");
+        result->time_gps += (d_time - ((int)(d_time)*1.0));   // append milisecond
+        result->latitude = std::stod( contents[2] );    // 위도
+        result->longitude= std::stod( contents[4] );    // 경도
+        result->spd_kmh = std::stod( contents[6] );     // speed
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -206,17 +274,16 @@ void Cgps::handle_gps_rx(void) {
 
     while( _m_is_continue_ == true ) {
         try {
-            gps.reset();
             // Get GPS-data from Uart GPS-Module 
             read_data(_m_fd_, buffer);      // Blocking API
             sys_time = ::time_pkg::CTime::get<double>();
             
             // Parsing GPS-data
-            gps = parse_data(buffer, sys_time);
-
-            // Set GPS & notify
-            set_gps( gps );
-            _mcv_gps_.notify_all();
+            if( parse_data(buffer, sys_time, gps) == true ) {
+                // Set GPS & notify
+                set_gps( gps );
+                _mcv_gps_.notify_all();
+            }
         }
         catch ( const std::exception& e ) {
             LOGERR("%s", e.what());

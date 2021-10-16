@@ -32,19 +32,21 @@ public:
         double time_gps;    // Latest gps-time that is updated by GPS-module.
         double latitude;    // 위도
         double longitude;   // 경도
-        double altitude;    // 고도
+        // double altitude;    // 고도
+        double spd_kmh;
 
         Gps(void) {
-            time_sys == 0.0;
-            time_gps == 0.0;
-            latitude == 0.0;
-            longitude == 0.0;
-            altitude == 0.0;
+            time_sys = 0.0;
+            time_gps = 0.0;
+            latitude = 0.0;
+            longitude = 0.0;
+            // altitude = 0.0;
+            spd_kmh = 0.0;
         }
         ~Gps(void) = default;
 
         bool check_validation(void) {
-            if( time_sys == 0.0 || time_gps == 0.0 || latitude == 0.0 || longitude == 0.0 || altitude == 0.0 ) {
+            if( time_sys == 0.0 || time_gps == 0.0 || latitude == 0.0 || longitude == 0.0 ) {
                 return false;
             }
             return true;
@@ -73,7 +75,9 @@ private:
 
     void set_gps( std::shared_ptr<Gps> gps );
 
-    std::shared_ptr<Gps> parse_data( std::vector<uint8_t>& data, double sys_time );
+    bool parse_data( std::vector<uint8_t>& data, double sys_time, std::shared_ptr<Gps>& gps );
+
+    std::shared_ptr<Gps> parse_NMEA0183( std::string& msg );
 
     /** Thread related function */
     void create_threads(void);
@@ -93,6 +97,8 @@ private:
     /** GPS-receiving thread */
     std::atomic<bool> _m_is_continue_;
     std::thread _m_gps_receiver_;
+
+    static constexpr const char* NMEA0183_PREFIX = "$GNRMC,";
 
 };
 
