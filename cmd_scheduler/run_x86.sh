@@ -3,6 +3,7 @@ PROG_NAME=app_cmd_scheduler
 __PROG_ROOT_PATH__=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 function runner_set_env() {
+    export EXPORT_ENV_GPS_PATH="/dev/ttyUSB0"
     export MACHINE_DEVICE_NAME="Machine-0x123456"
     # export RESERVED_CMDS_ROOT=${__PROG_ROOT_PATH__}/test/dbgk-cmd
     export LD_LIBRARY_PATH=${__PROG_ROOT_PATH__}/../common/lib/communicator/lib/x86:${LD_LIBRARY_PATH}

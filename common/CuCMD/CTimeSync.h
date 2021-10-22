@@ -55,7 +55,7 @@ private:
     };
 
 public:
-    CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func );
+    CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const char* uart_path=NULL );
 
     ~CTimeSync( void );
 
@@ -101,7 +101,7 @@ private:
 
     double get_time_src(void);
 
-    bool set_system_time( double time );
+    bool set_system_time( double time, double gap_threshold=0.1, double now=0.0 );
 
     double calculate_avg_time_on( double& now, bool& time_on, bool& time_src );
 
@@ -132,7 +132,6 @@ private:
     static constexpr const int64_t TIME_SEND_PERIOD_KEEPALIVE = 5;
     static constexpr const int64_t TIME_UPDATE_PERIOD = 60;
     static constexpr const double TIME_INTERVAL_THRESOLDER = 0.2;
-    static constexpr const char* GPS_UART_PATH = "/dev/ttyUSB0";
 
 };
 

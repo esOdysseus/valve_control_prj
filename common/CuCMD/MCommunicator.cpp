@@ -18,8 +18,9 @@ namespace comm {
 /*********************************
  * Definition of Public Function.
  */
-MCommunicator::MCommunicator( const std::string& app_path, std::string& file_path_alias, 
-                                                           const TProtoMapper& mapper_pvd_proto ) {
+MCommunicator::MCommunicator( const std::string& app_path, 
+                              std::string& file_path_alias, 
+                              const TProtoMapper& mapper_pvd_proto ) {
     clear();
     try {
         _m_myself_ = std::make_shared<alias::CAlias>( app_path, "ALL-PVDs", true );

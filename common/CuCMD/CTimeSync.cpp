@@ -77,11 +77,13 @@ constexpr const double CTimeSync::TIME_INTERVAL_THRESOLDER;
 /**********************************
  * Definition of Public Function.
  */
-CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func )
-: _m_gps_(GPS_UART_PATH) {
+CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const char* uart_path )
+: _m_gps_(uart_path) {
     clear();
 
     try {
+        double gps_time = 0.0;
+
         _m_myself_ = myself;
         _mf_send_ = func;
         if( _m_myself_.get() == NULL ) {
@@ -100,7 +102,9 @@ CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func )
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 0);
 
         // if possible, then set System-Time according to GPS-Time.
-        if( set_system_time( get_time_src() ) == true ) {
+        gps_time = get_time_src();
+        if( gps_time > 0.0 ) {
+            set_system_time( gps_time );
             _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, 1);
             _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 1);
             _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, 0);
@@ -381,15 +385,13 @@ bool CTimeSync::update_time(void) {         // locking API
 
         // update system-time if need it. (gap >= 0.2 sec)
         double gap = avg_time - now;
-        if( fabs(gap) >= 0.2 ) {
-            if( set_system_time(avg_time) == true ) {
-                result = true;
-                
-                // update 'rcv_time' within _mm_peers_.
-                std::lock_guard<std::mutex>  guard(_mtx_peers_);
-                for( auto itr=_mm_peers_.begin(); itr != _mm_peers_.end(); itr++ ) {
-                    itr->second.rcv_time += gap;
-                }
+        if( set_system_time(avg_time, 0.2, now) == true ) {
+            result = true;
+            
+            // update 'rcv_time' within _mm_peers_.
+            std::lock_guard<std::mutex>  guard(_mtx_peers_);
+            for( auto itr=_mm_peers_.begin(); itr != _mm_peers_.end(); itr++ ) {
+                itr->second.rcv_time += gap;
             }
         }
 
@@ -568,23 +570,29 @@ double CTimeSync::get_time_src(void) {
     return 0.0;
 }
 
-bool CTimeSync::set_system_time( double time ) {
+bool CTimeSync::set_system_time( double time, double gap_threshold, double now ) {
     bool result = false;
 
     if ( time <= 0.0 ) {
         LOGW("\"time(%f)\" is invalid value.", time);
-        return false;
+        return result;
     }
 
-#ifdef TEST_MODE_ENABLE
-    return true;
-#else
+    if( now == 0.0 ) {
+        now = ::time_pkg::CTime::get<double>();
+    }
+
+    if( fabs(time - now) < gap_threshold ) {
+        LOGW("Gap about the time is under the threshold(%f)", gap_threshold);
+        return result;
+    }
+
+    // Set time as system-time.
     result = ::time_pkg::CTime::set( time );
     if( result == true ) {
         _m_gps_.reset();
     }
     return result;
-#endif
 }
 
 double CTimeSync::calculate_avg_time_on( double& now, bool& time_on, bool& time_src ) {
