@@ -60,6 +60,7 @@ CWhen::CWhen( std::string type, std::string start_date,
             }
         }
 
+        LOGD("start_time=%f, start_date=%s, run_time=%s", start_time, start_date.data(), run_time.data());
         apply( type, start_time, week_e, period, latency );
     }
     catch ( const std::exception& e ) {
@@ -302,15 +303,7 @@ void CWhen::check_validation( std::string type, double start_time,
         }
 
         if( type == TYPE_ONECE ) {
-            if( start_time == START_TIME_NULL && latency == LATENCY_NULL ) {
-                std::string err = "start-time xor latency is needed in \"" + type + "\" type.";
-                throw std::invalid_argument(err);
-            }
-            else if( start_time != START_TIME_NULL && latency != LATENCY_NULL ) {
-                std::string err = "start-time xor latency is needed in \"" + type + "\" type.";
-                throw std::invalid_argument(err);
-            }
-            else if( start_time != START_TIME_NULL && start_time <= now ) {
+            if( latency == LATENCY_NULL && start_time != START_TIME_NULL && start_time <= now ) {
                 std::string err = "Future start-time is needed in \"" + type + "\" type.";
                 throw std::invalid_argument(err);
             }

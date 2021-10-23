@@ -196,18 +196,20 @@ bool CController::insert_cmd(std::shared_ptr<CMDType> cmd) {
 
 std::shared_ptr<CController::CMDlistType> CController::pop_tasks(void) {
     // Search Task-List to do task.
-    unsigned int count = 0;
+    uint32_t count = 0;
+    uint32_t total_cnt = 0;
     std::shared_ptr<CMDlistType> cmds_to_exe = std::make_shared<CMDlistType>();
 
     try {
         std::lock_guard<std::mutex> guard(_mtx_cmd_list_);
         auto itor = _cmd_list_.begin();
+        total_cnt = _cmd_list_.size();
 
         while( itor != _cmd_list_.end() ) {
             auto valve_cmd = *itor;
             count++;
-            if( count > _cmd_list_.size() ) {
-                std::string err = "Inserted CMD count(" + std::to_string(count) + ") is over than size of original CMD-List.(" + std::to_string(_cmd_list_.size()) + ")";
+            if( count > total_cnt ) {
+                std::string err = "Inserted CMD count(" + std::to_string(count) + ") is over than size of original CMD-List.(" + std::to_string(total_cnt) + ")";
                 throw std::logic_error(err);
             }
 
