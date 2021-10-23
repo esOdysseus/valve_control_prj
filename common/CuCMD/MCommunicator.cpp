@@ -456,7 +456,8 @@ bool MCommunicator::send_without_payload( const alias::CAlias& peer,
     std::shared_ptr<cmd::CuCMD> simple_cmd;
     std::shared_ptr<payload::CPayload> new_payload;
     assert( flag == E_FLAG::E_FLAG_ACK_MSG || 
-            flag == E_FLAG::E_FLAG_ACTION_START );
+            flag == E_FLAG::E_FLAG_ACTION_START ||
+            flag == E_FLAG::E_FLAG_RESP_MSG );
 
     try {
         if( comm.get() == NULL ) {

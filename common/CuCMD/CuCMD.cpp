@@ -154,9 +154,11 @@ std::shared_ptr<payload::CPayload> CuCMD::encode( std::shared_ptr<ICommunicator>
         protocol->set_property("state", _state_);
         protocol->set_property("msg_id", _msg_id_);
 
-        if ( get_flag(E_FLAG::E_FLAG_ACK_MSG | E_FLAG::E_FLAG_ACTION_START) == 0 ) {
+        if ( _who_.get() != NULL && _when_.get() != NULL && _where_.get() != NULL && 
+             _what_.get() != NULL && _how_.get() != NULL && _why_.get() != NULL ) {
             const char* body = NULL;
             Json_DataType json_manager;
+            LOGD("Try to make payload using JSON-format.");
 
             // make json body (where, what, how, why)
             json_manager = std::make_shared<json_mng::CMjson>();
@@ -217,10 +219,7 @@ std::shared_ptr<payload::CPayload> CuCMD::force_encode( std::shared_ptr<ICommuni
         protocol->set_property("msg_id", msg_id);
 
         LOGI("flag=0x%X", flag);
-        if ( (flag & (E_FLAG::E_FLAG_ACTION_START | E_FLAG::E_FLAG_ACK_MSG)) == 0 ) {
-            if( payload.empty() == true ) {
-                throw std::invalid_argument("payload is empty.");
-            }
+        if( payload.empty() == false ) {
             LOGI("payload=%s", payload.data());
             protocol->set_payload( payload.c_str(), payload.length() );
         }
