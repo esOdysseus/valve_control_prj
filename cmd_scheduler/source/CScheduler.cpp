@@ -128,6 +128,7 @@ void CScheduler::send_command( alias::CAlias& peer, std::shared_ptr<Tdb::Trecord
         // Trig peer to do activity according to a json-data. (send json-data to peer)
         //      We will get msg-id from MCommunicator->request()
         msg_id = _m_comm_mng_->request( peer, payload, common::E_STATE::E_STATE_THR_CMD );
+        LOGD("TX-MSG: msg-id=%u", msg_id);
 
         // If get msg-id != 0, then append record to DataBase(Now-DB) with state == TRIGGERED & msg-id.
         // But msg-id == 0, then append record to DataBase(PAST-DB) with state == FAIL & msg-id.
@@ -327,6 +328,7 @@ bool CScheduler::process_now_space( std::shared_ptr<cmd::ICommand>& cmd ) {
 
         // Get Message-ID
         msg_id = ucmd->get_id();
+        LOGD("RX-MSG: msg-id=%u", msg_id);
         if( msg_id == 0 ) {
             throw std::invalid_argument("msg_id is NULL. (invalid CMD)");
         }

@@ -141,7 +141,9 @@ uint32_t MCommunicator::keepalive( const alias::CAlias& peer, const std::string&
         }
 
         // Send message.
-        return handler->send(peer_app, peer_pvd, new_payload);
+        if( handler->send(peer_app, peer_pvd, new_payload) == false ){
+            throw std::runtime_error("request sending is failed.");
+        }
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -197,7 +199,9 @@ uint32_t MCommunicator::request( const alias::CAlias& peer, const std::string& j
         }
 
         // Send message.
-        return handler->send(peer_app, peer_pvd, new_payload);
+        if( handler->send(peer_app, peer_pvd, new_payload) == false ){
+            throw std::runtime_error("request sending is failed.");
+        }
     }
     catch ( const std::exception& e ) {
         LOGERR("%s", e.what());
