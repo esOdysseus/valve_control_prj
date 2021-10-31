@@ -51,8 +51,15 @@ Cgps::~Cgps(void) {
 }
 
 void Cgps::reset(void) {
-    std::unique_lock<std::mutex> lk(_mtx_gps_);
-    _m_gps_.reset();
+    {
+        std::unique_lock<std::mutex> lk(_mtx_time_);
+        _m_time_.reset();
+    }
+
+    {
+        std::unique_lock<std::mutex> lk(_mtx_gps_);
+        _m_gps_.reset();
+    }
 }
 
 bool Cgps::is_active(void) {
@@ -75,11 +82,11 @@ double Cgps::get_time(void) {
         time = ::time_pkg::CTime::get<double>();    // temporary code.
 #else
 
-        std::unique_lock<std::mutex> lk(_mtx_gps_);
-        if ( (_m_gps_.get() == NULL) && (true == _m_is_continue_.load()) ) {
+        std::unique_lock<std::mutex> lk(_mtx_time_);
+        if ( (_m_time_.get() == NULL) && (true == _m_is_continue_.load()) ) {
             // block until receive next-gps data. ( use conditional_variable )
-            _mcv_gps_.wait(lk, [&]() {
-                return ((_m_gps_.get() != NULL) || (false == _m_is_continue_.load()));
+            _mcv_time_.wait(lk, [&]() {
+                return ((_m_time_.get() != NULL) || (false == _m_is_continue_.load()));
             });
         }
 
@@ -89,7 +96,7 @@ double Cgps::get_time(void) {
 
         // try to get GPS-time
         now = ::time_pkg::CTime::get<double>();
-        time = _m_gps_->time_gps + (now - _m_gps_->time_sys);
+        time = _m_time_->time_gps + (now - _m_time_->time_sys);
 #endif
     }
     catch( const std::exception& e ) {
@@ -151,25 +158,50 @@ std::shared_ptr<Cgps::Gps> Cgps::get_gps(void) {
  */
 void Cgps::clear(void) {
     _m_state_ = TState::E_STATE_INACTIVE;
-
     _m_is_continue_ = false;
-    std::unique_lock<std::mutex> lk(_mtx_gps_);
-    _m_gps_.reset();
+    reset();
+}
+
+void Cgps::set_time( std::shared_ptr<Gps> gps ) {
+    try {
+        if( gps.get() == NULL ) {
+            throw std::invalid_argument("gps-time is NULL.");
+        }
+
+        if( gps->time_gps <= 0.0 || gps->time_sys <= 0.0 ) {
+            throw std::invalid_argument("gps-time is invalid-data.");
+        }
+
+        {
+            std::unique_lock<std::mutex> lk(_mtx_time_);
+            _m_time_.reset();
+            _m_time_ = gps;
+        }
+        _mcv_time_.notify_all();
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 void Cgps::set_gps( std::shared_ptr<Gps> gps ) {
     try {
         if( gps.get() == NULL ) {
-            throw std::invalid_argument("gps input-data is NULL.");
+            throw std::invalid_argument("gps-data is NULL.");
         }
 
         if( gps->check_validation() == false ) {
-            throw std::invalid_argument("gps input-data is invalid-data.");
+            LOGW("gps-data is invalid-data.");
+            return ;
         }
 
-        std::unique_lock<std::mutex> lk(_mtx_gps_);
-        _m_gps_.reset();
-        _m_gps_ = gps;
+        {
+            std::unique_lock<std::mutex> lk(_mtx_gps_);
+            _m_gps_.reset();
+            _m_gps_ = gps;
+        }
+        _mcv_gps_.notify_all();
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -194,13 +226,10 @@ bool Cgps::parse_data( std::vector<uint8_t>& data, double sys_time, std::shared_
         // parse NMEA-0183 protocol.
         gps.reset();
         gps = parse_NMEA0183(msg);
-        if( gps.get() != NULL ) {
+        if( gps.get() != NULL && gps->time_gps > 0.0 ) {
             gps->time_sys = sys_time;
-            result = gps->check_validation();
-            if( result == false ) {
-                gps.reset();
-                LOGW("Validation Checking is failed.");
-            }
+            _m_state_ = TState::E_STATE_ACTIVE;
+            result = true;
         }
     }
     catch( const std::exception& e ) {
@@ -239,23 +268,36 @@ std::shared_ptr<Cgps::Gps> Cgps::parse_NMEA0183( std::string& msg ) {
             leng = idx + 1;
         } while( idx != std::string::npos );
 
-        // Check validation
+
+        // Check whether GPS-time is NULL.
+        if( contents[0].empty() == true || contents[0].size() == 0 ) {
+            LOGW("UTC-time is null value.");
+            return result;
+        }
+
+        // Allocate memory for GPS-structure.
+        result = std::make_shared<Gps>();
+        if( result.get() == NULL ) {
+            throw std::runtime_error("Can not allocate memory to GPS.");
+        }
+
+        // Set GPS-time values.
+        time = contents[0].substr(0,6);                     // We only need HHMMSS
+        d_time = std::stod(time);
+        result->time_gps = ::time_pkg::CTime::convert<double>(time, contents[8].data(),"%H%M%S", "%d%m%y");
+        result->time_gps += (9.0 * 3600.0);                 // Append 9 hour for Korean-Time.
+        result->time_gps += (d_time - ((int)(d_time)*1.0)); // Append milisecond
+    
+
+        // Check GPS-data validation
         if( contents[1] != "A" ) {
             LOGW("It's not invalid GPS-data.");
             return result;
         }
 
-        // Make GPS-data
-        result = std::make_shared<Gps>();
-        if( result.get() == NULL ) {
-            throw std::runtime_error("Can not allocate memory to GPS.");
-        }
-        time = contents[0].substr(0,6); // We only need HHMMSS
-        d_time = std::stod(time);
-        result->time_gps = ::time_pkg::CTime::convert<double>(time, contents[8].data(),"%H%M%S", "%d%m%y");
-        result->time_gps += (d_time - ((int)(d_time)*1.0));   // append milisecond
-        result->latitude = std::stod( contents[2] );    // 위도
-        result->longitude= std::stod( contents[4] );    // 경도
+        // Set GPS-data.
+        result->latitude = std::stod( contents[2] );            // 위도
+        result->longitude= std::stod( contents[4] );            // 경도
         result->spd_kmh = std::stod( contents[6] ) * 1.852;     // speed (unit: km/h)
     }
     catch( const std::exception& e ) {
@@ -294,6 +336,7 @@ void Cgps::destroy_threads(void) {
     if( _m_is_continue_.exchange(false) == true ) {
         if( _m_gps_receiver_.joinable() == true ) {
             LOGI("Destroy GPS-receiving thread.");
+            _mcv_time_.notify_all();
             _mcv_gps_.notify_all();
             _m_gps_receiver_.join();
         }
@@ -315,13 +358,12 @@ void Cgps::handle_gps_rx(void) {
             // Get GPS-data from Uart GPS-Module 
             read_data(_m_fd_, buffer);      // Blocking API
             sys_time = ::time_pkg::CTime::get<double>();
-            
+
             // Parsing GPS-data
             if( parse_data(buffer, sys_time, gps) == true ) {
                 // Set GPS & notify
+                set_time( gps );
                 set_gps( gps );
-                _m_state_ = TState::E_STATE_ACTIVE;
-                _mcv_gps_.notify_all();
             }
         }
         catch ( const std::exception& e ) {

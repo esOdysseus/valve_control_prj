@@ -73,6 +73,8 @@ private:
 
     void clear(void);
 
+    void set_time( std::shared_ptr<Gps> gps );
+
     void set_gps( std::shared_ptr<Gps> gps );
 
     bool parse_data( std::vector<uint8_t>& data, double sys_time, std::shared_ptr<Gps>& gps );
@@ -88,6 +90,11 @@ private:
 
 private:
     TState _m_state_;               // State of GPS-module. [ In-Active, Active ]
+
+    /** GPS-time */
+    std::mutex _mtx_time_;
+    std::condition_variable _mcv_time_;
+    std::shared_ptr<Gps> _m_time_;   // latest time result
 
     /** GPS-result */
     std::mutex _mtx_gps_;

@@ -142,7 +142,7 @@ uint32_t MCommunicator::keepalive( const alias::CAlias& peer, const std::string&
 
         // Send message.
         if( handler->send(peer_app, peer_pvd, new_payload) == false ){
-            throw std::runtime_error("request sending is failed.");
+            throw std::runtime_error("keepalive sending is failed.");
         }
     }
     catch ( const std::exception& e ) {
