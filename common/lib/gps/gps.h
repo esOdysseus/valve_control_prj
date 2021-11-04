@@ -32,7 +32,6 @@ public:
         double time_gps;    // Latest gps-time that is updated by GPS-module.
         double latitude;    // 위도
         double longitude;   // 경도
-        // double altitude;    // 고도
         double spd_kmh;
 
         Gps(void) {
@@ -40,7 +39,6 @@ public:
             time_gps = 0.0;
             latitude = 0.0;
             longitude = 0.0;
-            // altitude = 0.0;
             spd_kmh = 0.0;
         }
         ~Gps(void) = default;

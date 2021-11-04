@@ -176,7 +176,9 @@ void Cgps::set_time( std::shared_ptr<Gps> gps ) {
             std::unique_lock<std::mutex> lk(_mtx_time_);
             _m_time_.reset();
             _m_time_ = gps;
+            _m_state_ = TState::E_STATE_ACTIVE;
         }
+        LOGI("GPS-time is activated.");
         _mcv_time_.notify_all();
     }
     catch( const std::exception& e ) {
@@ -228,7 +230,6 @@ bool Cgps::parse_data( std::vector<uint8_t>& data, double sys_time, std::shared_
         gps = parse_NMEA0183(msg);
         if( gps.get() != NULL && gps->time_gps > 0.0 ) {
             gps->time_sys = sys_time;
-            _m_state_ = TState::E_STATE_ACTIVE;
             result = true;
         }
     }
@@ -333,46 +334,56 @@ void Cgps::create_threads(void) {
 }
 
 void Cgps::destroy_threads(void) {
-    if( _m_is_continue_.exchange(false) == true ) {
-        if( _m_gps_receiver_.joinable() == true ) {
-            LOGI("Destroy GPS-receiving thread.");
-            _mcv_time_.notify_all();
-            _mcv_gps_.notify_all();
-            _m_gps_receiver_.join();
+    try {
+        if( _m_is_continue_.exchange(false) == true ) {
+            if( _m_gps_receiver_.joinable() == true ) {
+                LOGI("Destroy GPS-receiving thread.");
+                _mcv_time_.notify_all();
+                _mcv_gps_.notify_all();
+                _m_gps_receiver_.join();
+            }
         }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
     }
 }
 
 void Cgps::handle_gps_rx(void) {
-    // TState state = TState::E_STATE_ERROR;
     double sys_time = 0.0;
     std::shared_ptr<Gps> gps;
     std::vector<uint8_t> buffer;
-    buffer.reserve( 2* READ_BUF_SIZE );
 
-    LOGI("Run GPS-receiver thread.");
-    _m_state_ = TState::E_STATE_INACTIVE;
+    try {
+        LOGI("Run GPS-receiver thread.");
+        buffer.reserve( 2* READ_BUF_SIZE );
+        _m_state_ = TState::E_STATE_INACTIVE;
 
-    while( _m_is_continue_ == true ) {
-        try {
-            // Get GPS-data from Uart GPS-Module 
-            read_data(_m_fd_, buffer);      // Blocking API
-            sys_time = ::time_pkg::CTime::get<double>();
+        while( _m_is_continue_ == true ) {
+            try {
+                // Get GPS-data from Uart GPS-Module 
+                read_data(_m_fd_, buffer);      // Blocking API
+                sys_time = ::time_pkg::CTime::get<double>();
 
-            // Parsing GPS-data
-            if( parse_data(buffer, sys_time, gps) == true ) {
-                // Set GPS & notify
-                set_time( gps );
-                set_gps( gps );
+                // Parsing GPS-data
+                if( parse_data(buffer, sys_time, gps) == true ) {
+                    // Set GPS & notify
+                    set_time( gps );
+                    set_gps( gps );
+                }
+            }
+            catch ( const std::exception& e ) {
+                LOGERR("%s", e.what());
             }
         }
-        catch ( const std::exception& e ) {
-            LOGERR("%s", e.what());
-        }
-    }
 
-    _m_state_ = TState::E_STATE_INACTIVE;
-    LOGI("Exit GPS-receiver thread.");
+        _m_state_ = TState::E_STATE_INACTIVE;
+        LOGI("Exit GPS-receiver thread.");
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+    }
 }
 
 
