@@ -78,7 +78,7 @@ constexpr const double CTimeSync::TIME_INTERVAL_THRESOLDER;
  * Definition of Public Function.
  */
 CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const char* uart_path )
-: _m_gps_(uart_path) {
+: _m_gps_(uart_path, ::gps_pkg::Cgps::Tbr::E_BR_115200) {
     clear();
 
     try {

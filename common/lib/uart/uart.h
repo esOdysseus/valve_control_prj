@@ -11,13 +11,14 @@ namespace uart {
 
 
 class IUart {
-protected:
+public:
     using Tbr = enum class _enum_baud_rate_ {
         E_BR_NONE = 0,
         E_BR_9600,
         E_BR_115200
     };
-
+    
+protected:
     using TState = enum class _enum_state_ {
         /* Global State: It can set _m_state_ variable */
         E_STATE_INACTIVE = 0,
