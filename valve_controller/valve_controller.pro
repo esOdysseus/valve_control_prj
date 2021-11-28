@@ -59,6 +59,7 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/uart
 
 !contains(DEFINES, LOG_MODE_STDOUT) {
+    INCLUDEPATH += $$COMMON_LIB_ROOT/lib/dlt
     INCLUDEPATH += $$get_incs_pkgconfig(automotive-dlt)
 }
 
@@ -74,7 +75,7 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/lib/uart/*.cpp)
 
 !contains(DEFINES, LOG_MODE_STDOUT) {
-    SOURCES += $$files($$COMMON_LIB_ROOT/lib/logger/dlt/*.cpp)
+    SOURCES += $$files($$COMMON_LIB_ROOT/lib/dlt/*.cpp)
 }
 
 # Make Libraries ##############################

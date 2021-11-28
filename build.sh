@@ -48,6 +48,7 @@ function main() {
             echo ">>>> Clear all-data of installation & objects. <<<<"
             rm -rf ${BUILD_DIR}
             rm -rf ${INSTALL_DIR}
+            rm -rf ${ROOT_PATH}/common/lib/dlt/dlt-daemon
             ;;
         "all") # build all components
             run_build_common_lib all
@@ -136,9 +137,13 @@ function run_build_common_lib() {
     case ${BUILD_TARGET} in
         "all") # build all components
             build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            build_common_dlt     ${BUILD_COMLIB_DIR}   ${DESTDIR}
             ;;
         "sqlite")    # build sqlite
             build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            ;;
+        "dlt")    # build dlt
+            build_common_dlt  ${BUILD_COMLIB_DIR}   ${DESTDIR}
             ;;
         *) 
             echo -e "\e[1;31m [ERROR] Not Supported BUILD_TARGET common-lib.(${BUILD_TARGET}) \e[0m"
@@ -147,10 +152,57 @@ function run_build_common_lib() {
     esac
 }
 
+function build_common_dlt() {
+    local BUILD_COMLIB_DIR=${1}/dlt
+    local DESTDIR=${2}/dlt
+    local SRC_PATH=${ROOT_PATH}/common/lib/dlt/dlt-daemon
+    local OPTIONS=
+    local INSTALL_OPT="-DCMAKE_INSTALL_PREFIX=${DESTDIR}"
+
+    if [ ! -d "${BUILD_COMLIB_DIR}" ]; then
+        mkdir -p ${BUILD_COMLIB_DIR}
+    fi
+
+    if [ ! -d "${DESTDIR}" ]; then
+        mkdir -p ${DESTDIR}
+    fi
+
+    # if dlt source is not exist, then git clone version 2.18.8
+    if [ ! -d "${SRC_PATH}" ]; then
+        cd ${ROOT_PATH}/common/lib/dlt
+        git clone https://github.com/COVESA/dlt-daemon.git
+        cd ${SRC_PATH}
+        git checkout -b 2.18.8 1438fcf8c88cd47b20b2984180a8457c3eb9193d
+        sync
+    fi
+
+    # build source
+    cd ${BUILD_COMLIB_DIR}
+    echo 
+    echo "----- Start to build DLT-daemon -----"
+    if [ "${CPU_ARCH}" == "${DEF_CPU_ARCH}" ]; then
+        echo "- CPU-ARCH = ${CPU_ARCH}"
+        cmake ${SRC_PATH} ${OPTIONS} ${INSTALL_OPT}
+    else
+        echo "- CROSS-CPU-ARCH = ${CROSS_CPU_ARCH} (doing Cross-Compile)"
+        cmake ${SRC_PATH} ${OPTIONS} ${INSTALL_OPT}
+    fi
+    make
+    
+    echo 
+    echo "----- Start to install DLT-daemon -----"
+    echo 
+    make install
+
+    echo 
+    echo "----- Done DLT-daemon -----"
+    echo 
+}
+
 function build_common_sqlite() {
     local BUILD_COMLIB_DIR=${1}/sqlite
     local DESTDIR=${2}/sqlite
-    local SQLITE_SRC_PATH=${ROOT_PATH}/common/lib/sqlite/sqlite3_src
+    local SRC_PATH=${ROOT_PATH}/common/lib/sqlite/sqlite
     local OPTIONS='--enable-threadsafe --enable-dynamic-extensions --enable-readline'
     local INSTALL_OPT="--prefix=${DESTDIR}"
 
@@ -162,15 +214,31 @@ function build_common_sqlite() {
         mkdir -p ${DESTDIR}
     fi
 
+    # # if sqlite3 source is not exist, then git clone version 3.36.0
+    # if [ ! -d "${SRC_PATH}" ]; then
+    #     cd ${ROOT_PATH}/common/lib/sqlite
+    #     git clone https://github.com/sqlite/sqlite.git
+    #     cd ${SRC_PATH}
+    #     git checkout -b 3.36.0 6d72858e795481571a40c07675cc9d2c15b5b3ef
+    #     sync
+    # fi
+
+    # make configuration
+    echo 
+    echo "----- Make SQLite configuration -----"
+    cd ${SRC_PATH}
+    autoreconf --force
+
+    # build source
     cd ${BUILD_COMLIB_DIR}
     echo 
     echo "----- Start to build SQLite -----"
     if [ "${CPU_ARCH}" == "${DEF_CPU_ARCH}" ]; then
         echo "- CPU-ARCH = ${CPU_ARCH}"
-        CFLAGS="-Os" ${SQLITE_SRC_PATH}/configure ${OPTIONS} ${INSTALL_OPT}
+        CFLAGS="-Os" ${SRC_PATH}/configure ${OPTIONS} ${INSTALL_OPT}
     else
         echo "- CROSS-CPU-ARCH = ${CROSS_CPU_ARCH} (doing Cross-Compile)"
-        CFLAGS="-Os" ${SQLITE_SRC_PATH}/configure --host=${CROSS_CPU_ARCH} ${OPTIONS} ${INSTALL_OPT}
+        CFLAGS="-Os" ${SRC_PATH}/configure --host=${CROSS_CPU_ARCH} ${OPTIONS} ${INSTALL_OPT}
     fi
     make
     

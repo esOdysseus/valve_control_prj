@@ -64,6 +64,7 @@ INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include 
 
 !contains(DEFINES, LOG_MODE_STDOUT) {
+    INCLUDEPATH += $$COMMON_LIB_ROOT/lib/dlt
     INCLUDEPATH += $$get_incs_pkgconfig(automotive-dlt)
 }
 
@@ -79,7 +80,7 @@ SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)
 
 !contains(DEFINES, LOG_MODE_STDOUT) {
-    SOURCES += $$files($$COMMON_LIB_ROOT/lib/logger/dlt/*.cpp)
+    SOURCES += $$files($$COMMON_LIB_ROOT/lib/dlt/*.cpp)
 }
     
 # Make Libraries ##############################

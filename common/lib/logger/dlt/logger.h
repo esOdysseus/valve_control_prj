@@ -2,7 +2,7 @@
 #define _H_LOCAL_PRINT_AS_STDOUT_
 
 
-#include "CdltLogger.h"
+#include <CdltLogger.h>
 
 #ifndef LOG_DLT_APP_ID
     #define LOG_DLT_APPID "none"
