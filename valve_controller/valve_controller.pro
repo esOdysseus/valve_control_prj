@@ -11,15 +11,27 @@ VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
     message( "Not exist common_config.pri file." )
 }
 
+!include ($$_PRO_FILE_PWD_/../pkg_config.pri) {
+    message( "Not exist pkg_config.pri file." )
+}
+
 # for building
 COMMON_LIB_ROOT=$$_PRO_FILE_PWD_/../common
 COMM_LIB_ROOT=$$COMMON_LIB_ROOT/lib/communicator
-LIBS += -lpthread -lcommunicator -L$$COMM_LIB_ROOT/lib/$$CPU_ARCH
+
 
 DEFINES += LOGGER_TAG=\\\"APP\\\"
 DEFINES += VER_MAJ=$$VER_MAJ
 DEFINES += VER_MIN=$$VER_MIN
 DEFINES += VER_PAT=$$VER_PAT
+
+# for logger_mode (default logger == DLT logger)
+# DEFINES += LOG_MODE_STDOUT
+
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    DEFINES += LOG_DLT_APPID=\\\"cont\\\"
+    DEFINES += LOG_DLT_CID=\\\"valv\\\"
+}
 
 equals(BUILD_MODE, "debug") {
     DEFINES += LOG_TIME_ENABLE
@@ -31,6 +43,8 @@ equals(BUILD_MODE, "release") {
     DEFINES += LOG_LEVEL=$$LOG_LEVEL_INFO
 }
 
+
+# Make Incloude Path ##############################
 INCLUDEPATH += \
     $$_PRO_FILE_PWD_/source/include    \
     $$COMM_LIB_ROOT/include    \
@@ -44,14 +58,31 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/time      \
     $$COMMON_LIB_ROOT/lib/uart
 
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    INCLUDEPATH += $$get_incs_pkgconfig(automotive-dlt)
+}
+
+# Make Sources ##############################
 SOURCES += \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/CuCMD/*.cpp)   \
+    $$files($$COMMON_LIB_ROOT/lib/logger/*.cpp) \
     $$files($$COMMON_LIB_ROOT/lib/gps/*.cpp)    \
     $$files($$COMMON_LIB_ROOT/lib/uart/*.cpp)
+
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    SOURCES += $$files($$COMMON_LIB_ROOT/lib/logger/dlt/*.cpp)
+}
+
+# Make Libraries ##############################
+LIBS += -lpthread -lcommunicator -L$$COMM_LIB_ROOT/lib/$$CPU_ARCH
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    LIBS += $$get_libs_pkgconfig(automotive-dlt)
+}
+
 
 # for installation.
 EXTRA_BINFILES = \

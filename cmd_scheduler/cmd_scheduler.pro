@@ -11,11 +11,14 @@ VERSION = $$VER_MAJ"."$$VER_MIN"."$$VER_PAT
     message( "Not exist common_config.pri file." )
 }
 
+!include ($$_PRO_FILE_PWD_/../pkg_config.pri) {
+    message( "Not exist pkg_config.pri file." )
+}
+
 # for building
 COMMON_LIB_ROOT=$$_PRO_FILE_PWD_/../common
 COMM_LIB_ROOT=$$COMMON_LIB_ROOT/lib/communicator
 SQLITE_LIB_ROOT=$$ROOT_PATH/$$BUILD_MODE/common/lib/sqlite
-LIBS += -lpthread -lcommunicator -L$$COMM_LIB_ROOT/lib/$$CPU_ARCH -lsqlite3 -L$$SQLITE_LIB_ROOT/lib
 
 DEFINES += LOGGER_TAG=\\\"APP\\\"
 DEFINES += VER_MAJ=$$VER_MAJ
@@ -24,6 +27,14 @@ DEFINES += VER_PAT=$$VER_PAT
 
 # for testing at X86
 DEFINES += TEST_MODE_GPS_ENABLE
+
+# for logger_mode (default logger == DLT logger)
+# DEFINES += LOG_MODE_STDOUT
+
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    DEFINES += LOG_DLT_APPID=\\\"sche\\\"
+    DEFINES += LOG_DLT_CID=\\\"cmd-\\\"
+}
 
 equals(BUILD_MODE, "debug") {
     DEFINES += LOG_TIME_ENABLE
@@ -35,6 +46,8 @@ equals(BUILD_MODE, "release") {
     DEFINES += LOG_LEVEL=$$LOG_LEVEL_INFO
 }
 
+
+# Make Incloude Path ##############################
 INCLUDEPATH += \
     $$SQLITE_LIB_ROOT/include   \
     $$COMM_LIB_ROOT/include    \
@@ -48,9 +61,13 @@ INCLUDEPATH += \
     $$COMMON_LIB_ROOT/lib/uart    \
     $$COMMON_LIB_ROOT/lib/sqlite    \
     $$COMMON_LIB_ROOT/principle    \
-    $$_PRO_FILE_PWD_/source/include
+    $$_PRO_FILE_PWD_/source/include 
 
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    INCLUDEPATH += $$get_incs_pkgconfig(automotive-dlt)
+}
 
+# Make Sources ##############################
 SOURCES += \
     $$files($$COMMON_LIB_ROOT/*.cpp)  \
     $$files($$COMMON_LIB_ROOT/principle/contents/*.cpp)  \
@@ -60,7 +77,17 @@ SOURCES += \
     $$files($$COMMON_LIB_ROOT/lib/sqlite/*.cpp) \
     $$files($$COMMON_LIB_ROOT/lib/uart/*.cpp) \
     $$files($$_PRO_FILE_PWD_/source/*.cpp)
+
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    SOURCES += $$files($$COMMON_LIB_ROOT/lib/logger/dlt/*.cpp)
+}
     
+# Make Libraries ##############################
+LIBS += -lpthread -lcommunicator -L$$COMM_LIB_ROOT/lib/$$CPU_ARCH 
+LIBS += -lsqlite3 -L$$SQLITE_LIB_ROOT/lib
+!contains(DEFINES, LOG_MODE_STDOUT) {
+    LIBS += $$get_libs_pkgconfig(automotive-dlt)
+}
 
 
 # for installation.
