@@ -4,9 +4,9 @@
 
 #include <CdltLogger.h>
 
-#ifndef LOG_DLT_APP_ID
+#ifndef LOG_DLT_APPID
     #define LOG_DLT_APPID "none"
-#endif // LOG_DLT_APP_ID
+#endif // LOG_DLT_APPID
 
 #ifndef LOG_DLT_CID
     #define LOG_DLT_CID   "none"

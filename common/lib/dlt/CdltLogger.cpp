@@ -91,6 +91,7 @@ CdltLogger::CdltLogger(const char* appid, const char* cid) {
         app_desp = std::string(appid) + " Application is Started.";
         cid_desp = std::string(cid) + " Context is set.";
 
+        printf(">> Register APPID(%s), CID(%s)\n", appid, cid);
         DLT_REGISTER_APP(appid, app_desp.data());
         DLT_REGISTER_CONTEXT_LL_TS(_m_ctx_, cid, cid_desp.data(), static_cast<uint32_t>(Tlevel::DEBUG), DLT_TRACE_STATUS_OFF);
     }
