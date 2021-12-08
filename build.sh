@@ -138,6 +138,7 @@ function run_build_common_lib() {
         "all") # build all components
             build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
             build_common_dlt     ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            build_common_communicator   "${ROOT_PATH}/common/lib"   ${DESTDIR}    ${CPU_ARCH}
             ;;
         "sqlite")    # build sqlite
             build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
@@ -145,11 +146,41 @@ function run_build_common_lib() {
         "dlt")    # build dlt
             build_common_dlt  ${BUILD_COMLIB_DIR}   ${DESTDIR}
             ;;
+        "comm")    # build communicator
+            build_common_communicator  "${ROOT_PATH}/common/lib"   ${DESTDIR}     ${CPU_ARCH}
+            ;;
         *) 
             echo -e "\e[1;31m [ERROR] Not Supported BUILD_TARGET common-lib.(${BUILD_TARGET}) \e[0m"
             exit 1
             ;;
     esac
+}
+
+function build_common_communicator() {
+    echo ""
+    echo "----- Build communicator. -----"
+    local SRC_PATH=${1}/communicator
+    local DESTDIR=${2}/communicator
+    local CPU_ARCH=${3}
+
+    if [ ! -d "${DESTDIR}" ]; then
+        mkdir -p "${DESTDIR}"
+        mkdir -p "${DESTDIR}/etc"
+        mkdir -p "${DESTDIR}/include"
+        mkdir -p "${DESTDIR}/lib"
+    fi
+
+    echo "cp -Rdp \"${SRC_PATH}/config/${CPU_ARCH}/*\"  \"${DESTDIR}/etc/\""
+    cp -Rdp ${SRC_PATH}/config/${CPU_ARCH}/*  "${DESTDIR}/etc/"
+
+    echo "cp -Rdp \"${SRC_PATH}/include/*\"  \"${DESTDIR}/include/\""
+    cp -Rdp ${SRC_PATH}/include/*  "${DESTDIR}/include/"
+
+    echo "cp -Rdp \"${SRC_PATH}/lib/${CPU_ARCH}/*\"  \"${DESTDIR}/lib/\""
+    cp -Rdp ${SRC_PATH}/lib/${CPU_ARCH}/*  "${DESTDIR}/lib/"
+
+    echo "----- Done build communicator. -----"
+    echo ""
 }
 
 function build_common_dlt() {
@@ -193,6 +224,7 @@ function build_common_dlt() {
     echo "----- Start to install DLT-daemon -----"
     echo 
     make install
+    cp -Rdp "${ROOT_PATH}/common/lib/dlt/dlt.conf"  "${DESTDIR}/etc/"
 
     echo 
     echo "----- Done DLT-daemon -----"

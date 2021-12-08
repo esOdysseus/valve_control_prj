@@ -1,0 +1,25 @@
+[Unit]
+Description=Valve-Controller daemon for Farm-Automation
+Requires=dlt.service
+After=multi-user.target network-online.target dlt.service
+
+[Service]
+Type=simple
+NotifyAccess=main
+User=root
+Group=root
+Environment=EXPORT_ENV_GPS_PATH=/dev/ttyS1
+Environment=MACHINE_DEVICE_NAME=Machine_Valve_controller
+Environment=VALVE_GPIO_ROOT=/root/project/test/gpio
+Environment=LD_LIBRARY_PATH=/root/project/fw/lib
+WorkingDirectory=/root/project/app
+ExecStartPre=/bin/bash -c /root/scripts/valve_controller/prepare.sh
+ExecStart=/root/project/app/valve_controller  ../fw/config/desp_alias.json   ../fw/config/desp_UniversalCMD_protocol.json
+Restart=always
+RestartSec=5
+TimeoutSec=30
+LimitCORE=infinity
+CPUAffinity=2
+
+[Install]
+WantedBy=multi-user.target
