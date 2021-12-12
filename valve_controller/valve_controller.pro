@@ -1,4 +1,4 @@
-TARGET = app_valve_control
+TARGET = app_valve_controller
 TEMPLATE = app
 QT -= gui core
 

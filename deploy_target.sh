@@ -40,6 +40,14 @@ echo ""
 # Set local-variables
 APP_ROOT="${ROOT_PATH}/${BUILD_MODE}/${APP_NAME}"
 COMMON_ROOT="${ROOT_PATH}/${BUILD_MODE}/common"
+if [ ! -d "${APP_ROOT}" ] ; then
+    echo -e "\e[1;31m [ERROR] Not exist \"${APP_ROOT}\" folder \e[0m"
+    exit
+fi
+if [ ! -d "${COMMON_ROOT}" ] ; then
+    echo -e "\e[1;31m [ERROR] Not exist \"${COMMON_ROOT}\" folder \e[0m"
+    exit
+fi
 
 # Set remote-variables
 RMT_APP_ROOT="/root/project/app"

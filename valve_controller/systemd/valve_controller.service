@@ -13,7 +13,7 @@ Environment=MACHINE_DEVICE_NAME=Machine_Valve_controller
 Environment=VALVE_GPIO_ROOT=/root/project/test/gpio
 Environment=LD_LIBRARY_PATH=/root/project/fw/lib
 WorkingDirectory=/root/project/app
-ExecStartPre=/bin/bash -c /root/scripts/valve_controller/prepare.sh
+ExecStartPre=/bin/bash -c ./systemd/set_valveEnv.sh
 ExecStart=/root/project/app/valve_controller  ../fw/config/desp_alias.json   ../fw/config/desp_UniversalCMD_protocol.json
 Restart=always
 RestartSec=5
