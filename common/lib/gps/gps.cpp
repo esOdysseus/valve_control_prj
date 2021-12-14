@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <cstring>
 #include <gps.h>
 #include <time_kes.h>
 
@@ -247,7 +248,7 @@ std::shared_ptr<Cgps::Gps> Cgps::parse_NMEA0183( std::string& msg ) {
         std::string time;
         double d_time = 0.0;
         std::vector<std::string> contents;
-        size_t leng = sizeof(NMEA0183_PREFIX);
+        size_t leng = std::strlen(NMEA0183_PREFIX);
         size_t idx = msg.find(NMEA0183_PREFIX);
         if( idx == std::string::npos ) {
             LOGW("It's not NMEA0183 Protocol.");
@@ -284,6 +285,7 @@ std::shared_ptr<Cgps::Gps> Cgps::parse_NMEA0183( std::string& msg ) {
 
         // Set GPS-time values.
         time = contents[0].substr(0,6);                     // We only need HHMMSS
+        LOGD("time=%s", time.data());
         d_time = std::stod(time);
         result->time_gps = ::time_pkg::CTime::convert<double>(time, contents[8].data(),"%H%M%S", "%d%m%y");
         result->time_gps += (9.0 * 3600.0);                 // Append 9 hour for Korean-Time.

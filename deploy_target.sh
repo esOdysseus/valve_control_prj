@@ -11,6 +11,7 @@ if [ -z ${1} ] || [ -z ${2} ] || [ -z ${3} ] || [ -z ${4} ] ; then
     echo "= param-03 : user     --> ID: root , eunseok"
     echo "= param-04 : passwd   --> password"
     echo "= param-05 : build    --> build mode : debug , release (default)"
+    echo "= param-06 : mode     --> mode : only_app , only_common, all (default)"
     echo "==================================================================="
     echo ""
     echo -e "\e[1;31m [ERROR] Please insert parameters \e[0m"
@@ -26,6 +27,11 @@ BUILD_MODE=release
 if [ ! -z ${5} ] ; then
     BUILD_MODE=${5}
 fi
+MODE=all
+if [ ! -z ${6} ] ; then
+    MODE=${6}
+fi
+
 
 echo ""
 echo "=========================="
@@ -34,8 +40,16 @@ echo "IP=${IP}"
 echo "USER=${USER}"
 echo "PASSWD=${PASSWD}"
 echo "BUILD_MODE=${BUILD_MODE}"
+echo "MODE=${MODE}"
 echo "=========================="
 echo ""
+
+if [ "${MODE}" != "only_app" ] && [ "${MODE}" != "only_common" ] && [ "${MODE}" != "all" ] ; then
+    echo -e "\e[1;31m [ERROR] \"${MODE}\" is not supported mode. \e[0m"
+    echo -e "\e[1;31m         Please valid-value like(\"only_app\", \"only_common\", \"all\") \e[0m"
+    exit
+fi
+
 
 # Set local-variables
 APP_ROOT="${ROOT_PATH}/${BUILD_MODE}/${APP_NAME}"
@@ -108,47 +122,55 @@ echo ""
 
 echo ""
 echo "===== Remove Application/Common files. ====="
-exec_command "rm -rf ${RMT_APP_ROOT}"
-exec_command "rm -rf ${RMT_COMMON_ROOT}"
+if [ "${MODE}" == "only_app" ] || [ "${MODE}" == "all" ] ; then
+    exec_command "rm -rf ${RMT_APP_ROOT}"
+fi
+if [ "${MODE}" == "only_common" ] || [ "${MODE}" == "all" ] ; then
+    exec_command "rm -rf ${RMT_COMMON_ROOT}"
+fi
 
 
 ##### Send Common files.
-echo ""
-echo "===== Deloy Common files. ====="
-exec_command "mkdir -p ${RMT_COMMON_ROOT}/bin"
-exec_command "mkdir -p ${RMT_COMMON_ROOT}/lib"
-exec_command "mkdir -p ${RMT_COMMON_ROOT}/config"
+if [ "${MODE}" == "only_common" ] || [ "${MODE}" == "all" ] ; then
+    echo ""
+    echo "===== Deloy Common files. ====="
+    exec_command "mkdir -p ${RMT_COMMON_ROOT}/bin"
+    exec_command "mkdir -p ${RMT_COMMON_ROOT}/lib"
+    exec_command "mkdir -p ${RMT_COMMON_ROOT}/config"
 
-DLT_ROOT="${COMMON_ROOT}/lib/dlt"           # DLT
-send_dir_file "${DLT_ROOT}/bin/dlt-daemon"  "${RMT_COMMON_ROOT}/bin/"
-send_dir_file "${DLT_ROOT}/bin/dlt-receive"  "${RMT_COMMON_ROOT}/bin/"
-send_dir_file "${DLT_ROOT}/etc/*"  "${RMT_COMMON_ROOT}/config/"
-send_dir_file "${DLT_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
-exec_command "mkdir -p /etc/dltlog"
+    echo "-------------- DLT common files ------------------"
+    DLT_ROOT="${COMMON_ROOT}/lib/dlt"           # DLT
+    send_dir_file "${DLT_ROOT}/bin/dlt-daemon"  "${RMT_COMMON_ROOT}/bin/"
+    send_dir_file "${DLT_ROOT}/bin/dlt-receive"  "${RMT_COMMON_ROOT}/bin/"
+    send_dir_file "${DLT_ROOT}/etc/*"  "${RMT_COMMON_ROOT}/config/"
+    send_dir_file "${DLT_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
+    exec_command "mkdir -p /etc/dltlog"
+    echo "-------------- SQLite common files ------------------"
+    SQLITE_ROOT="${COMMON_ROOT}/lib/sqlite"     # SQLITE
+    send_dir_file "${SQLITE_ROOT}/bin"  "${RMT_COMMON_ROOT}/"
+    send_dir_file "${SQLITE_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
+    echo "-------------- COMM common files ------------------"
+    COMM_ROOT="${COMMON_ROOT}/lib/communicator"     # COMM
+    send_dir_file "${COMM_ROOT}/etc/*"  "${RMT_COMMON_ROOT}/config/"
+    send_dir_file "${COMM_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
 
-SQLITE_ROOT="${COMMON_ROOT}/lib/sqlite"     # SQLITE
-send_dir_file "${SQLITE_ROOT}/bin"  "${RMT_COMMON_ROOT}/"
-send_dir_file "${SQLITE_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
-
-COMM_ROOT="${COMMON_ROOT}/lib/communicator"     # COMM
-send_dir_file "${COMM_ROOT}/etc/*"  "${RMT_COMMON_ROOT}/config/"
-send_dir_file "${COMM_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
-
-echo "===== Done deloy Common files. ====="
-echo ""
-
+    echo "===== Done deloy Common files. ====="
+    echo ""
+fi
 
 ##### Send Application files.
-echo ""
-echo "===== Deloy Application files. ====="
-exec_command "mkdir -p ${RMT_APP_ROOT}"
-exec_command "mkdir -p ${RMT_APP_ROOT}/log"
+if [ "${MODE}" == "only_app" ] || [ "${MODE}" == "all" ] ; then
+    echo ""
+    echo "===== Deloy Application files. ====="
+    exec_command "mkdir -p ${RMT_APP_ROOT}"
+    exec_command "mkdir -p ${RMT_APP_ROOT}/log"
 
-send_dir_file "${APP_ROOT}/bin/app_${APP_NAME}"  "${RMT_APP_ROOT}/${APP_NAME}"
-send_dir_file "${ROOT_PATH}/${APP_NAME}/systemd" "${RMT_APP_ROOT}/"
+    send_dir_file "${APP_ROOT}/bin/app_${APP_NAME}"  "${RMT_APP_ROOT}/${APP_NAME}"
+    send_dir_file "${ROOT_PATH}/${APP_NAME}/systemd" "${RMT_APP_ROOT}/"
 
-echo "===== Done deloy Application files. ====="
-echo ""
+    echo "===== Done deloy Application files. ====="
+    echo ""
+fi
 
 
 ##### Register Application to systemd.
@@ -160,3 +182,8 @@ exec_command "sync"
 exec_command "sync"
 echo "===== Done registring Application files. ====="
 echo ""
+
+
+echo ""
+echo "===== Reboot target-board. ====="
+exec_command "reboot"
