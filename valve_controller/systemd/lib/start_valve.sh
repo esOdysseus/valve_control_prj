@@ -8,6 +8,11 @@ PORT_TYPE=${1}
 PORT_NUM=${2}
 PORT_DIRECTION=out
 
+PORT_INIT_VALUE=1
+if [ ! -z ${3} ] ; then
+        PORT_INIT_VALUE=${3}
+fi
+
 
 # Definition of Function
 source ${PATH_SCRIPT_FILE}/logger.sh
@@ -56,10 +61,10 @@ chmod 666 ${SUNXI_GPIO_PIN_VALUE}
 
 
 # Test result-pin of OUT-PIN setting.
-echo 1 > ${SUNXI_GPIO_PIN_VALUE}
+echo ${PORT_INIT_VALUE} > ${SUNXI_GPIO_PIN_VALUE}
 RESULT=$(cat ${SUNXI_GPIO_PIN_VALUE})
 
-if [ ${RESULT} != 1 ]; then
+if [ ${RESULT} != ${PORT_INIT_VALUE} ]; then
         loge "Test-set pin-out is failed."
 fi
 
