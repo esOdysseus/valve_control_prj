@@ -38,6 +38,8 @@ private:
 
     void clear( void );
 
+    void cb_changed_svc_state( bool service_on );
+
 private:
     std::shared_ptr<comm::MCommunicator>  _m_comm_mng_;
 

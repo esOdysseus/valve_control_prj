@@ -23,6 +23,7 @@ namespace comm {
 class MCommunicator {
 public:
     using CMDType = cmd::ICommand;
+    using TLsvcState = ::cmd::CTimeSync::TFsvcState;
     using TListener = std::function<void(std::shared_ptr<CMDType>& /*command*/)>;
     using TProtoMapper = std::map<std::string /*pvd-id*/, std::string /*protocol file-path*/>;
 
@@ -36,11 +37,16 @@ private:
     using TPvdList = alias::IAliasSearcher::TPvdList;
 
 public:
-    MCommunicator( const std::string& app_path, std::string& file_path_alias, const TProtoMapper& mapper_pvd_proto );
+    MCommunicator( const std::string& app_path, 
+                   std::string& file_path_alias, 
+                   const TProtoMapper& mapper_pvd_proto, 
+                   const double max_holding_time = MAX_HOLD_TIME );
 
     ~MCommunicator(void);
 
     void register_listener( const std::string& pvd_id, TListener func );
+
+    void register_listener_svc_state( TLsvcState func );
 
     std::shared_ptr<alias::CAlias> get_myself(void);
 
@@ -112,6 +118,8 @@ private:
     TCommMapper _mm_comm_;          // multi-communicator
 
     TListenMapper _mm_listener_;    // multi-listener per provider-id.
+
+    static constexpr const double MAX_HOLD_TIME = 24 * 3600.0;     // 24 hour
 
 };
 

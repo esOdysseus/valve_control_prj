@@ -121,6 +121,31 @@ void CController::receive_command( std::shared_ptr<cmd::ICommand>& cmd ) {
     }
 }
 
+void CController::set_service_indicator( bool state ) {
+    try {
+        int t_gpio_value = 1;
+        std::string t_gpio = _gpio_root_path_ + "/gpio12/value";
+
+        // decide gpio-pin value according to state.
+        if( state == true ) {
+            LOGI("Service is ON.");
+            t_gpio_value = 0;
+        }
+        else {
+            LOGI("Service is OFF.");
+        }
+
+        // write GPIO with value.
+        if( set_gpio(t_gpio, t_gpio_value) == false ) {
+            throw std::runtime_error("Failed write GPIO for valve-control.");
+        }
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
 /************************************
  * Definition of Private-Function.
  */
@@ -324,7 +349,7 @@ bool CController::execute_valve_cmd(std::shared_ptr<CMDType> &valve_cmd, E_PWR p
         }
 
         // write GPIO with value.
-        result = valve_set(t_gpio, t_gpio_value);
+        result = set_gpio(t_gpio, t_gpio_value);
         if( result == false ) {
             throw std::runtime_error("Failed write GPIO for valve-control.");
         }
@@ -416,7 +441,7 @@ std::string CController::get_gpio_path(std::shared_ptr<CMDType> &valve_cmd) {
     return t_gpio;
 }
 
-bool CController::valve_set(std::string gpio_path, int value) {
+bool CController::set_gpio(std::string gpio_path, int value) {
     LOGD("Called.");
     int sys_output = -1;
     char *buf = NULL;

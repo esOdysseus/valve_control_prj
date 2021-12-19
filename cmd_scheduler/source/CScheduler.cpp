@@ -28,7 +28,7 @@ bool CScheduler::init( std::string file_path_alias, std::string file_path_proto 
             { PVD_DEBUGGER, std::string() }
         };
         
-        _m_comm_mng_ = std::make_shared<comm::MCommunicator>( APP_PATH, file_path_alias, mapper );
+        _m_comm_mng_ = std::make_shared<comm::MCommunicator>( APP_PATH, file_path_alias, mapper, 24 * 3600.0 );
         if( _m_comm_mng_.get() == NULL ) {
             throw std::runtime_error("MCommunicator mem-allocation is failed.");
         }

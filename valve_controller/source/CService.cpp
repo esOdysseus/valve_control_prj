@@ -28,13 +28,14 @@ bool CService::init( std::string file_path_alias, std::string file_path_proto ) 
             { PVD_COMMANDER, file_path_proto }
         };
         
-        _m_comm_mng_ = std::make_shared<comm::MCommunicator>( APP_PATH, file_path_alias, mapper );
+        _m_comm_mng_ = std::make_shared<comm::MCommunicator>( APP_PATH, file_path_alias, mapper, 24 * 3600.0 );
         if( _m_comm_mng_.get() == NULL ) {
             throw std::runtime_error("MCommunicator mem-allocation is failed.");
         }
 
         _m_ctrller_.init(_m_comm_mng_);
         _m_comm_mng_->register_listener( PVD_COMMANDER, std::bind(&valve_pkg::CController::receive_command, &_m_ctrller_, _1) );
+        _m_comm_mng_->register_listener_svc_state( std::bind(&CService::cb_changed_svc_state, this, _1) );
     }
     catch( const std::exception& e ) {
         LOGERR("%s", e.what());
@@ -85,6 +86,16 @@ CService::CService( void ) {
 
 void CService::clear( void ) {
     _m_comm_mng_.reset();
+}
+
+void CService::cb_changed_svc_state( bool service_on ) {
+    try {
+        _m_ctrller_.set_service_indicator( service_on );
+    }
+    catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 

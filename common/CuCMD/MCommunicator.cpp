@@ -14,13 +14,15 @@ using namespace std::placeholders;
 
 namespace comm {
 
+constexpr const double MCommunicator::MAX_HOLD_TIME;
 
 /*********************************
  * Definition of Public Function.
  */
 MCommunicator::MCommunicator( const std::string& app_path, 
                               std::string& file_path_alias, 
-                              const TProtoMapper& mapper_pvd_proto ) {
+                              const TProtoMapper& mapper_pvd_proto,
+                              const double max_holding_time ) {
     clear();
     try {
         _m_myself_ = std::make_shared<alias::CAlias>( app_path, "ALL-PVDs", true );
@@ -28,7 +30,7 @@ MCommunicator::MCommunicator( const std::string& app_path,
             throw std::runtime_error("Memory-Allication of _m_myself_ is failed.");
         }
 
-        _m_time_synchor_ = std::make_shared<::cmd::CTimeSync>( _m_myself_, std::bind(&MCommunicator::keepalive,this,_1,_2,_3) );
+        _m_time_synchor_ = std::make_shared<::cmd::CTimeSync>( _m_myself_, std::bind(&MCommunicator::keepalive,this,_1,_2,_3), max_holding_time );
         if( _m_time_synchor_.get() == NULL ) {
             throw std::runtime_error("Memory-Allication of _m_time_synchor_ is failed.");
         }
@@ -62,6 +64,19 @@ void MCommunicator::register_listener( const std::string& pvd_id, TListener func
         _mm_listener_[pvd_id].push_back(func);
     }
     catch ( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
+}
+
+void MCommunicator::register_listener_svc_state( TLsvcState func ) {
+    try {
+        if( _m_time_synchor_.get() == NULL ) {
+            throw std::logic_error("Time-Synchor is not yet initialized.");
+        }
+        _m_time_synchor_->regist_cb_service_state( func );
+    }
+    catch( const std::exception& e ) {
         LOGERR("%s", e.what());
         throw e;
     }

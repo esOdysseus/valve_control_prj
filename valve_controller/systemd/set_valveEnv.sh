@@ -15,7 +15,7 @@ ${ROOT_PATH}/lib/start_valve.sh A 18
 ${ROOT_PATH}/lib/start_valve.sh A 19
 
 # Set GPIO port for In-Active indicator.
-${ROOT_PATH}/lib/start_valve.sh A 12
+${ROOT_PATH}/lib/start_valve.sh A 12  0
 
 sync
 sleep 1

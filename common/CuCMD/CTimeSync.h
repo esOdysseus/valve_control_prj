@@ -25,6 +25,7 @@ class CTimeSync {
 public:
     using TFsend = std::function<uint32_t( const alias::CAlias& /*peer*/, const std::string& /*data*/, common::StateType /*state*/ )>;
     using TFfailSafe = std::function<void(std::string&/*app*/, std::string&/*pvd*/)>;
+    using TFsvcState = std::function<void(bool/*service-on*/)>;
 
 private:
     class CpeerDesc {
@@ -55,7 +56,7 @@ private:
     };
 
 public:
-    CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const char* uart_path=NULL );
+    CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const double holding_time_on=3600.0, const char* uart_path=NULL );
 
     ~CTimeSync( void );
 
@@ -68,6 +69,8 @@ public:
     void regist_failsafe(TFfailSafe func);
 
     void unregist_failsafe(void);
+
+    void regist_cb_service_state(TFsvcState func);
 
     /* When happen connected-call-back, this function will be called. */
     void append_peer(std::string app, std::string pvd, double sent_time=0.0, double rcv_time=0.0);
@@ -83,6 +86,8 @@ private:
 
     void clear(void);
     
+    bool check_holding_service(bool time_src, bool time_on, bool& need_notify);
+
     void update_peer(void);
 
     bool update_time(void);
@@ -112,14 +117,18 @@ private:
 
     TFfailSafe _mf_failSafe_;
 
+    TFsvcState _mf_svcState_;
+
     std::map<std::string/*peer-full-path*/, bool> _mm_unsynced_peers_;     // Connected Peer-list. (for keep-alive proc)
 
     ::gps_pkg::Cgps _m_gps_;
 
+    double _m_watchdog_;        // second dead-time for expiring TIME_ON. ( watchdog + holding_time )
+    double _m_holding_time_;    // second duration-time for holding TIME_ON.
+
     // Thread routine variables
     std::atomic<bool> _m_is_continue_;       // Thread continue-flag.
-
-    std::thread _mt_keepaliver_; // Periodically, Thread that is charge of reacting Keep-Alive message.
+    std::thread _mt_keepaliver_;             // Periodically, Thread that is charge of reacting Keep-Alive message.
 
     class CServerInfo;
     std::map<std::string/*peer-full-path*/, std::shared_ptr<CServerInfo>> _mm_servers_;   // Wanted Peer-list. (for keep-alive proc)

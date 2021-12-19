@@ -67,6 +67,8 @@ public:
 
     void receive_command( std::shared_ptr<cmd::ICommand>& cmd );
 
+    void set_service_indicator( bool state );
+
 private:
     void clear(void);
 
@@ -92,7 +94,7 @@ private:
 
     std::string get_gpio_path(std::shared_ptr<CMDType> &valve_cmd);
 
-    bool valve_set(std::string gpio_path, int value);
+    bool set_gpio(std::string gpio_path, int value);
 
     CMDlistType decompose_cmd(std::shared_ptr<CMDType> cmd);
 

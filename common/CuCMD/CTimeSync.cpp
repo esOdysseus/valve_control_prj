@@ -77,13 +77,14 @@ constexpr const double CTimeSync::TIME_INTERVAL_THRESOLDER;
 /**********************************
  * Definition of Public Function.
  */
-CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const char* uart_path )
+CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, const double holding_time_on, const char* uart_path )
 : _m_gps_(uart_path, ::gps_pkg::Cgps::Tbr::E_BR_115200) {
     clear();
 
     try {
         double gps_time = 0.0;
 
+        _m_holding_time_ = holding_time_on;
         _m_myself_ = myself;
         _mf_send_ = func;
         if( _m_myself_.get() == NULL ) {
@@ -193,11 +194,21 @@ bool CTimeSync::unregist_keepalive( const std::string& peer_app, const std::stri
 }
 
 void CTimeSync::regist_failsafe(TFfailSafe func) {
+    if( func == NULL ) {
+        throw std::logic_error("\"func\" is NULL.");
+    }
     _mf_failSafe_ = func;
 }
 
 void CTimeSync::unregist_failsafe(void) {
     _mf_failSafe_ = NULL;
+}
+
+void CTimeSync::regist_cb_service_state( TFsvcState func ) {
+    if( func == NULL ) {
+        throw std::logic_error("\"func\" is NULL.");
+    }
+    _mf_svcState_ = func;
 }
 
 void CTimeSync::append_peer(std::string app, std::string pvd, double sent_time, double rcv_time) {
@@ -344,12 +355,60 @@ void CTimeSync::clear(void) {
     _m_myself_.reset();
     _mf_send_ = NULL;
     _mf_failSafe_ = NULL;
+    _mf_svcState_ = NULL;
 
     // Thread routine variables
     _m_is_continue_ = false;       // Thread continue-flag.
+    _m_watchdog_ = 0.0;
+    _m_holding_time_ = 0.0;
     _mm_servers_.clear();
     _mm_peers_.clear();
     _mm_unsynced_peers_.clear();
+}
+
+bool CTimeSync::check_holding_service(bool time_src, bool time_on, bool& need_notify) {
+    /****************************************************/
+    /* Check wether maintain Time-ON or Out-of-Service. */
+    //
+    // If time-source == false && myself.get_state()!=SRC && watchdog-timer is enabled, 
+    //    then compare watchdog-tim & now-time      return watchdog-overflow ? time-on : true.
+    // If time-source == false && myself.get_state()!=SRC && watchdog-timer is disabled, 
+    //    then                                      return time-on.
+    // If time-source == false && myself.get_state()==SRC, 
+    //    then watchdog-timer is enabled,           return true.
+    // If time-source == true, 
+    //    then reset of watchdog-timer is trigged   return time-on.
+
+    try {
+        need_notify = false;
+        if( _m_myself_->get_state(::common::E_STATE::E_STATE_TIME_ON) != 0 ) {
+            need_notify = true;
+        }
+
+        if( time_src == true ) {
+            // reset WatchDog-Timer
+            _m_watchdog_ = 0.0;
+            return time_on;
+        }
+
+        // If cur_source == false && pre_state == TIME_SRC, then enable WatchDog-Timer.
+        if( _m_myself_->get_state(::common::E_STATE::E_STATE_TIME_SRC) != 0 ) {
+            // enable WatchDog-Timer
+            _m_watchdog_ = time_pkg::CTime::get<double>() + _m_holding_time_;
+            return true;
+        }
+
+        if( _m_watchdog_ == 0.0 ) {
+            return time_on;
+        }
+
+        /* if WatchDog-Timer is overflowed */
+        return (_m_watchdog_ <= time_pkg::CTime::get<double>())? time_on : true;
+    }
+    catch( const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw e;
+    }
 }
 
 void CTimeSync::update_peer(void) {
@@ -378,6 +437,7 @@ bool CTimeSync::update_time(void) {         // locking API
     bool result = false;
     try {
         // calculate average-time with peer now-sent-time , self gps_time.
+        bool need_call_back = false;
         bool time_src = false;
         bool time_on = false;
         double now = 0.0;
@@ -395,10 +455,17 @@ bool CTimeSync::update_time(void) {         // locking API
             }
         }
 
+        // check maintain TIME_ON or Out-of-service.
+        time_on = check_holding_service( time_src, time_on, need_call_back );
+
         // set state TIME_SRC, TIME_ON, OUT_OF_SERVICE
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, time_on);
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, time_src);
         _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, !time_on);
+        if( need_call_back != time_on && _mf_svcState_ != NULL ) {
+            _mf_svcState_( time_on );
+        }
+
         if( result == true ) {
             notify_update();
         }
