@@ -10,7 +10,7 @@ User=root
 Group=root
 Environment=EXPORT_ENV_GPS_PATH=/dev/ttyS2
 Environment=MACHINE_DEVICE_NAME=Machine_Valve_controller
-Environment=VALVE_GPIO_ROOT=/root/project/test/gpio
+Environment=VALVE_GPIO_ROOT=/sys/class/gpio
 Environment=LD_LIBRARY_PATH=/root/project/fw/lib
 WorkingDirectory=/root/project/app
 ExecStartPre=/bin/bash -c ./systemd/set_valveEnv.sh

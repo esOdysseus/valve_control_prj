@@ -467,6 +467,9 @@ bool CController::set_gpio(std::string gpio_path, int value) {
             case 127:
                 LOGW("/bin/sh invoking is failed.");
                 throw CException(E_ERROR::E_ERR_FAIL_INVOKING_SHELL);
+            case 512:
+                LOGW("gpio_path(%s) is invalid.", gpio_path.c_str());
+                throw CException(E_ERROR::E_ERR_FAIL_INVOKING_SHELL);
             default:
                 LOGI("Output of system(%s) is [%d].", buf, sys_output);
                 result = true;

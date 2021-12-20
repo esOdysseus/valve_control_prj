@@ -276,6 +276,10 @@ std::shared_ptr<Cgps::Gps> Cgps::parse_NMEA0183( std::string& msg ) {
             LOGW("UTC-time is null value.");
             return result;
         }
+        if( contents[8].empty() == true || contents[8].size() == 0 ) {
+            LOGW("UTC-date is null value.");
+            return result;
+        }
 
         // Allocate memory for GPS-structure.
         result = std::make_shared<Gps>();

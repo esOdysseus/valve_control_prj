@@ -361,12 +361,14 @@ void CTimeSync::clear(void) {
     _m_is_continue_ = false;       // Thread continue-flag.
     _m_watchdog_ = 0.0;
     _m_holding_time_ = 0.0;
+    _m_need_call_back_ = true;
+
     _mm_servers_.clear();
     _mm_peers_.clear();
     _mm_unsynced_peers_.clear();
 }
 
-bool CTimeSync::check_holding_service(bool time_src, bool time_on, bool& need_notify) {
+bool CTimeSync::check_holding_service(bool time_src, bool time_on, bool& cur_time_on) {
     /****************************************************/
     /* Check wether maintain Time-ON or Out-of-Service. */
     //
@@ -380,9 +382,9 @@ bool CTimeSync::check_holding_service(bool time_src, bool time_on, bool& need_no
     //    then reset of watchdog-timer is trigged   return time-on.
 
     try {
-        need_notify = false;
+        cur_time_on = false;
         if( _m_myself_->get_state(::common::E_STATE::E_STATE_TIME_ON) != 0 ) {
-            need_notify = true;
+            cur_time_on = true;
         }
 
         if( time_src == true ) {
@@ -437,7 +439,7 @@ bool CTimeSync::update_time(void) {         // locking API
     bool result = false;
     try {
         // calculate average-time with peer now-sent-time , self gps_time.
-        bool need_call_back = false;
+        bool cur_time_on = false;
         bool time_src = false;
         bool time_on = false;
         double now = 0.0;
@@ -456,13 +458,15 @@ bool CTimeSync::update_time(void) {         // locking API
         }
 
         // check maintain TIME_ON or Out-of-service.
-        time_on = check_holding_service( time_src, time_on, need_call_back );
+        time_on = check_holding_service( time_src, time_on, cur_time_on );
 
         // set state TIME_SRC, TIME_ON, OUT_OF_SERVICE
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, time_on);
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, time_src);
         _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, !time_on);
-        if( need_call_back != time_on && _mf_svcState_ != NULL ) {
+        if( (cur_time_on != time_on || _m_need_call_back_) && _mf_svcState_ != NULL ) {
+            LOGI("Notify Service-state info. (time_on=%d)", time_on);
+            _m_need_call_back_ = false;
             _mf_svcState_( time_on );
         }
 
