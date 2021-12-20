@@ -88,6 +88,8 @@ private:
     
     bool check_holding_service(bool time_src, bool time_on, bool& cur_time_on);
 
+    void set_time_state(bool time_on, bool time_src, bool cur_time_on);
+
     void update_peer(void);
 
     bool update_time(void);
@@ -125,7 +127,6 @@ private:
 
     double _m_watchdog_;        // second dead-time for expiring TIME_ON. ( watchdog + holding_time )
     double _m_holding_time_;    // second duration-time for holding TIME_ON.
-    bool _m_need_call_back_;    // notify state of service-on.
 
     // Thread routine variables
     std::atomic<bool> _m_is_continue_;       // Thread continue-flag.

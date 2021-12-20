@@ -82,6 +82,7 @@ CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, con
     clear();
 
     try {
+        bool time_on = false;
         double gps_time = 0.0;
 
         _m_holding_time_ = holding_time_on;
@@ -98,18 +99,16 @@ CTimeSync::CTimeSync( std::shared_ptr<::alias::CAlias>& myself, TFsend func, con
         // Init state
         _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SYNC, 0);
         _m_myself_->set_state(::common::E_STATE::E_STATE_THR_KEEPALIVE, 0);
-        _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, 1);
-        _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, 0);
-        _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 0);
+        set_time_state(time_on, false, !time_on);
 
         // if possible, then set System-Time according to GPS-Time.
         gps_time = get_time_src();
         if( gps_time > 0.0 ) {
             set_system_time( gps_time );
-            _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, 1);
-            _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, 1);
-            _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, 0);
+            time_on = true;
+            set_time_state(time_on, true, !time_on);
         }
+        
         create_threads();
     }
     catch( const std::exception& e ) {
@@ -205,10 +204,22 @@ void CTimeSync::unregist_failsafe(void) {
 }
 
 void CTimeSync::regist_cb_service_state( TFsvcState func ) {
-    if( func == NULL ) {
-        throw std::logic_error("\"func\" is NULL.");
+    try {
+        bool time_on = false;
+        if( func == NULL ) {
+            throw std::logic_error("\"func\" is NULL.");
+        }
+        _mf_svcState_ = func;
+
+        // Notify first service-state indicator.
+        time_on = _m_myself_->get_state(::common::E_STATE::E_STATE_TIME_ON) != 0 ? true : false;
+        LOGI("Notify Service-state info. (time_on=%d)", time_on);
+        _mf_svcState_( time_on );
     }
-    _mf_svcState_ = func;
+    catch (const std::exception& e ) {
+        LOGERR("%s", e.what());
+        throw ;
+    }
 }
 
 void CTimeSync::append_peer(std::string app, std::string pvd, double sent_time, double rcv_time) {
@@ -361,7 +372,6 @@ void CTimeSync::clear(void) {
     _m_is_continue_ = false;       // Thread continue-flag.
     _m_watchdog_ = 0.0;
     _m_holding_time_ = 0.0;
-    _m_need_call_back_ = true;
 
     _mm_servers_.clear();
     _mm_peers_.clear();
@@ -413,6 +423,18 @@ bool CTimeSync::check_holding_service(bool time_src, bool time_on, bool& cur_tim
     }
 }
 
+void CTimeSync::set_time_state(bool time_on, bool time_src, bool cur_time_on) {
+    // set state TIME_SRC, TIME_ON, OUT_OF_SERVICE
+    _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, time_on);
+    _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, time_src);
+    _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, !time_on);
+
+    if( (cur_time_on != time_on) && _mf_svcState_ != NULL ) {
+        LOGI("Notify Service-state info. (time_on=%d)", time_on);
+        _mf_svcState_( time_on );
+    }
+}
+
 void CTimeSync::update_peer(void) {
     try {
         double now = time_pkg::CTime::get<double>();
@@ -459,16 +481,7 @@ bool CTimeSync::update_time(void) {         // locking API
 
         // check maintain TIME_ON or Out-of-service.
         time_on = check_holding_service( time_src, time_on, cur_time_on );
-
-        // set state TIME_SRC, TIME_ON, OUT_OF_SERVICE
-        _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_ON, time_on);
-        _m_myself_->set_state(::common::E_STATE::E_STATE_TIME_SRC, time_src);
-        _m_myself_->set_state(::common::E_STATE::E_STATE_OUT_OF_SERVICE, !time_on);
-        if( (cur_time_on != time_on || _m_need_call_back_) && _mf_svcState_ != NULL ) {
-            LOGI("Notify Service-state info. (time_on=%d)", time_on);
-            _m_need_call_back_ = false;
-            _mf_svcState_( time_on );
-        }
+        set_time_state(time_on, time_src, cur_time_on);
 
         if( result == true ) {
             notify_update();
