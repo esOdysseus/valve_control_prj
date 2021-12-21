@@ -8,7 +8,7 @@
     "when": {
         "type": "one-time",           // valid-values : [ one-time, routine.week, routine.day, specific ]
         "time": {
-            "latency": "30.0"     // unit : second  (for one-time)
+            "latency": "15.0"     // unit : second  (for one-time)
             // "week": "sun",        // valid-values : (for routine.week) [ mon, tues, wednes, thurs, fri, satur, sun ]
             // "period" : "1",   // valid-values : (for routine) [ 1 <= X ]: 2 week/day routine ...
             // "date" : "2021-06-13",     // valid-values : (for routine & specific)
@@ -25,7 +25,7 @@
     "what": {
         "type": "valve.swc",           // valid-values : [ 'valve.swc', 'db' ]
         "contents": {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
-            "seq": "1"
+            "seq": "3"
         }
     },
     "how": {

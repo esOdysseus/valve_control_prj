@@ -2,6 +2,7 @@
 Description=GENIVI DLT logging daemon
 Documentation=man:dlt-daemon(1)  man:dlt.conf(5)
 DefaultDependencies=no
+After=multi-user.target
 
 [Service]
 Type=simple
@@ -13,4 +14,4 @@ LimitCORE=infinity
 CPUAffinity=1
 
 [Install]
-WantedBy=basic.target
+WantedBy=multi-user.target

@@ -144,7 +144,6 @@ if [ "${MODE}" == "only_common" ] || [ "${MODE}" == "all" ] ; then
     send_dir_file "${DLT_ROOT}/bin/dlt-receive"  "${RMT_COMMON_ROOT}/bin/"
     send_dir_file "${DLT_ROOT}/etc/*"  "${RMT_COMMON_ROOT}/config/"
     send_dir_file "${DLT_ROOT}/lib"  "${RMT_COMMON_ROOT}/"
-    exec_command "mkdir -p /etc/dltlog"
     echo "-------------- SQLite common files ------------------"
     SQLITE_ROOT="${COMMON_ROOT}/lib/sqlite"     # SQLITE
     send_dir_file "${SQLITE_ROOT}/bin"  "${RMT_COMMON_ROOT}/"
@@ -164,6 +163,7 @@ if [ "${MODE}" == "only_app" ] || [ "${MODE}" == "all" ] ; then
     echo "===== Deloy Application files. ====="
     exec_command "mkdir -p ${RMT_APP_ROOT}"
     exec_command "mkdir -p ${RMT_APP_ROOT}/log"
+    exec_command "cp -Rdp ${RMT_COMMON_ROOT}/config/dlt_logstorage.conf  ${RMT_APP_ROOT}/log/"
 
     send_dir_file "${APP_ROOT}/bin/app_${APP_NAME}"  "${RMT_APP_ROOT}/${APP_NAME}"
     send_dir_file "${ROOT_PATH}/${APP_NAME}/systemd" "${RMT_APP_ROOT}/"

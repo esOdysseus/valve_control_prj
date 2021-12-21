@@ -10,7 +10,7 @@ fi
 echo "Command-File = ${CMD_FILE_PATH}"
 
 # Set Debug-Interface to communicate with CMD-Scheduler.
-IP_CMD_SCHEDULER=192.168.1.2
+IP_CMD_SCHEDULER=192.168.1.6
 PORT_CMD_SCHEDULER=20000        # for def_debugger Provider.
 
 # Try to send UDP-command according to FILE_PATH to CMD_SCHEDULER.

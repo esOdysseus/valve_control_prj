@@ -26,7 +26,7 @@ DEFINES += VER_MIN=$$VER_MIN
 DEFINES += VER_PAT=$$VER_PAT
 
 # for testing at X86
-DEFINES += TEST_MODE_GPS_ENABLE
+# DEFINES += TEST_MODE_GPS_ENABLE
 
 # for logger_mode (default logger == DLT logger)
 # DEFINES += LOG_MODE_STDOUT

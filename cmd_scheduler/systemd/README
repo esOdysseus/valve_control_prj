@@ -1,0 +1,30 @@
+
+[ Core-dump 생성을 위한 Linux-setting ]
+    1. Core-dump 크기를 무제한으로 만들자.
+        # vim /etc/security/limits.conf
+          #<domain>      <type>  <item>         <value>
+          
+          *                -       core            unlimited
+    2. Systemd base APP.service file 수정.
+        # vim cmd_scheduler.service
+          [Service]
+          LimitCORE=infinity
+    3. Systemd base Core-dump 파일 생성 경로 설정.
+        # vim /etc/sysctl.conf
+          #kernel.domainname = example.com
+          kernel.core_pattern = /root/core_%h-%e-%t-%p.core
+    4. apport daemon을 비활성화 시킨다.
+        # systemctl status apport.service
+          만약, apport에 대한 Output이 쓰여진다면, 아래 Command를 추가로 실행시킨다.
+        # systemctl stop apport.service
+        # systemd-sysv-install disable apport
+    5. 설정값 저장 및 확인
+        # sysctl -p
+        # cat /proc/sys/kernel/core_pattern
+          /root/core_%h-%e-%t-%p.core
+    6. Core-dump 생성 Test
+        # ps -elf | grep cmd
+          4 S root      2020     1  0  80   0 - 96475 hrtime 12:29 ?        00:00:04 /root/project/app/cmd_scheduler ../fw/config/desp_alias.json ../fw/config/desp_UniversalCMD_protocol.json
+        # kill -s SIGSEGV 2020
+        # ls /root/
+          core_cmd_scheduler-1639971716-2020.core

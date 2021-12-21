@@ -225,6 +225,7 @@ function build_common_dlt() {
     echo 
     make install
     cp -Rdp "${ROOT_PATH}/common/lib/dlt/dlt.conf"  "${DESTDIR}/etc/"
+    cp -Rdp "${ROOT_PATH}/common/lib/dlt/dlt_logstorage.conf"  "${DESTDIR}/etc/"
 
     echo 
     echo "----- Done DLT-daemon -----"
