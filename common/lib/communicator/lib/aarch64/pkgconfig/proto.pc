@@ -6,8 +6,8 @@ includedir=/home/eunseok/project/project/workspace/vscode/common_communicator/de
 
 Name: proto
 Description: Protocols library that support common-communicator.
-Version: 0.2.2
+Version: 0.3.0
 Libs: -L${libdir} -lproto 
-Libs.private:    
+Libs.private: -L$(ROOT_PATH)/debug/common/lib/dlt/lib -ldlt -lrt -lpthread   
 Cflags: -I${includedir}
 

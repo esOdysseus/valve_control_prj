@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <vector>
 #include <map>
 #include <dlt.h>
 

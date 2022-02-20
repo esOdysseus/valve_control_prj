@@ -125,7 +125,7 @@ function run_build_common_lib() {
 
     echo 
     echo "----- Build Environment -----"
-    echo "BUILD_DIR=${BUILD_COMLIB_DIR}"
+    echo "BUILD_COMLIB_DIR=${BUILD_COMLIB_DIR}"
     echo "BUILD_TARGET=${BUILD_TARGET}"
     echo "BUILD_MODE=${BUILD_MODE}"
     echo "DESTDIR=${DESTDIR}"

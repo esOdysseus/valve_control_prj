@@ -15,7 +15,11 @@
 #ifdef LOG_MODE_STDOUT
     #include "stdout/logger.h"
 #else
-    #include "dlt/logger.h"
+    #ifdef __cplusplus
+        #include "dlt/logger.h"
+    #else
+        #include "stdout/logger.h"
+    #endif
 #endif // LOG_MODE_STDOUT
 
 
