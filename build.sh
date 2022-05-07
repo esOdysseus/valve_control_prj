@@ -200,6 +200,8 @@ function build_common_dlt() {
 
     # if dlt source is not exist, then git clone version 2.18.8
     if [ ! -d "${SRC_PATH}" ]; then
+        echo 
+        echo "----- Git clone DLT-daemon -----"
         cd ${ROOT_PATH}/common/lib/dlt
         git clone https://github.com/COVESA/dlt-daemon.git
         cd ${SRC_PATH}
