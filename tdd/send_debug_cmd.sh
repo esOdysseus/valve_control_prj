@@ -14,5 +14,6 @@ IP_CMD_SCHEDULER=192.168.1.6
 PORT_CMD_SCHEDULER=20000        # for def_debugger Provider.
 
 # Try to send UDP-command according to FILE_PATH to CMD_SCHEDULER.
-cat ${CMD_FILE_PATH} | nc -u ${IP_CMD_SCHEDULER} ${PORT_CMD_SCHEDULER}
+# cat ${CMD_FILE_PATH} | nc -u ${IP_CMD_SCHEDULER} ${PORT_CMD_SCHEDULER}
+python3 ./debug_commander.py  -file ${CMD_FILE_PATH}  -ipr ${IP_CMD_SCHEDULER}  -portr ${PORT_CMD_SCHEDULER}
 

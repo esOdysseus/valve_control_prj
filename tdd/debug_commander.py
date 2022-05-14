@@ -1,12 +1,16 @@
+from decimal import InvalidContext
+import sys
 import socket
 import asyncio
 import argparse
 #################################################################################
 # Example-Code
-#   - Server : $ python3.9 ./test_udp.py -portl 20001
-#   - Client : $ python3.9 ./test_python/test_udp.py  -file ./One-Time_test.txt
-#              $ python3.8 ./test_python/test_udp.py  -file ./One-Time_test.txt  -ipr 192.168.1.6  -portr 20000
+#   - Server : $ python3.7 ./debug_commander.py  -portl 20001
+#   - Client : $ python3.7 ./debug_commander.py  -file ./One-Time_test.txt
+#              $ python3.7 ./debug_commander.py  -file ./One-Time_test.txt  -ipr 192.168.1.6  -portr 20000
 #################################################################################
+
+MIN_REQUIRED_PYTHON_VER=[3,7]   # We need over than 3.7 Version Python.
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-file', type=str, dest="file", help=' : file-path to be sent to Server.', default=None) 
@@ -37,7 +41,7 @@ def udp_runner(peer_addr: tuple, mesg: str):
                     print("Ready to receive message.")
                     msg, peer_addr = socUDP.recvfrom(RECV_BUF_SIZE)
                     msg = msg.decode('utf8')
-                    print(f"New data: {msg} from {peer_addr}")
+                    print("New data: {} from {}".format(msg, peer_addr))
                     await asyncio.sleep(0.5)
 
             async def sender():
@@ -58,7 +62,7 @@ def udp_runner(peer_addr: tuple, mesg: str):
             asyncio.run( runner() )      # Condition: Over than Python-Version 3.7
             
     except BaseException as e:
-        print(f"Error: {e}")
+        print("Error: ", e)
         raise e
 
 
@@ -67,7 +71,7 @@ def set_udp_property(sock):
     global SEND_BUF_SIZE
     try:
         if LOCAL_PORT is not None:
-            print(f"Set Local-Port.({LOCAL_PORT})")
+            print("Set Local-Port.({})".format(LOCAL_PORT))
             sock.bind(('', LOCAL_PORT))
             
         # Get the size of the socket's send buffer 
@@ -79,7 +83,7 @@ def set_udp_property(sock):
         print ("Buffer size [After]:%d" %bufsize) 
         
     except BaseException as e:
-        print(f"Error: {e}")
+        print("Error: ", e)
         raise e
 
 
@@ -94,35 +98,49 @@ def parse_args(args):
         # extract Peer Address
         if args.remote_ip is not None or args.remote_port is not None:
             peer_addr   = (args.remote_ip, args.remote_port)
-        print(f"Peer-Addr : {peer_addr}")
+        print("Peer-Addr : {}".format(peer_addr))
         
         # extract Message
         if args.file is not None:
             with open(args.file, mode="r+") as fp:
                 msg = fp.read().rstrip() # .replace('\n', '')
                 if msg is None or len(msg) == 0:
-                    raise RuntimeError(f"msg is not exist in file.({args.file})")
+                    raise RuntimeError("msg is not exist in file.({})".format(args.file))
                 if len(msg) >= MAX_MSG_BYTE_SIZE:
-                    raise RuntimeError(f"Message Size({len(msg)}) is over than MAX_MSG_SIZE.({MAX_MSG_BYTE_SIZE})")
+                    raise RuntimeError("Message Size({}) is over than MAX_MSG_SIZE.({})".format(len(msg), MAX_MSG_BYTE_SIZE))
                 
         return peer_addr, msg
     except BaseException as e:
-        print(f"Errot: {e}")
+        print("Error: ", e)
         raise e
 
 
-def main(args) : 
+def check_python_ver(major: int, minor: int=0, patch: int=0):
+    try:
+        if sys.version_info.major < major or sys.version_info.minor < minor or sys.version_info.micro < patch:
+            print("Current Python Version {}.{}.{}".format(sys.version_info[0],sys.version_info[1],sys.version_info[2]))
+            raise InvalidContext("We need Python Version over than {}.{}.{}".format(major, minor, patch))
+    except BaseException as e:
+        print("Error: ", e)
+        exit()
+
+
+def main(args) :
     print("Start of Program.")
     print("")
 
     try:
+        check_python_ver(*MIN_REQUIRED_PYTHON_VER)       # check python version is satisfied, or not.
+        
         peer_addr, msg = parse_args(args)
         udp_runner(peer_addr, msg)
     except BaseException as e:
-        print(f"Error: {e}")
+        print("Error: ", e)
     
     print("")
     print("End of Program.")
-    
+
+
+
 if __name__ == '__main__' :
     main(args)
