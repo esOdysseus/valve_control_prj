@@ -9,9 +9,21 @@ if [ ! -z ${1} ]; then
 fi
 echo "Command-File = ${CMD_FILE_PATH}"
 
-# Set Debug-Interface to communicate with CMD-Scheduler.
-IP_CMD_SCHEDULER=192.168.1.6
-PORT_CMD_SCHEDULER=20000        # for def_debugger Provider.
+BOARD_TYPE="x86"
+if [ ! -z ${2} ]; then
+    BOARD_TYPE=${2}
+fi
+echo "Board-Type = ${BOARD_TYPE}"
+
+if [ "${BOARD_TYPE}" == "x86" ]; then
+    # Set Debug-Interface to communicate with CMD-Scheduler.
+    IP_CMD_SCHEDULER=192.168.1.2
+    PORT_CMD_SCHEDULER=20000        # for def_debugger Provider.    
+else
+    # Set Debug-Interface to communicate with CMD-Scheduler.
+    IP_CMD_SCHEDULER=192.168.1.6
+    PORT_CMD_SCHEDULER=20000        # for def_debugger Provider.
+fi
 
 # Try to send UDP-command according to FILE_PATH to CMD_SCHEDULER.
 # cat ${CMD_FILE_PATH} | nc -u ${IP_CMD_SCHEDULER} ${PORT_CMD_SCHEDULER}

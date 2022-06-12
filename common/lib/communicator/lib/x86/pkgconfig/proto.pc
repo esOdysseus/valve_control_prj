@@ -8,6 +8,6 @@ Name: proto
 Description: Protocols library that support common-communicator.
 Version: 0.3.0
 Libs: -L${libdir} -lproto 
-Libs.private: -L/usr/local/automotive-dlt/lib -ldlt -lrt -lpthread   
+Libs.private:    
 Cflags: -I${includedir}
 

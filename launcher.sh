@@ -138,7 +138,7 @@ echo "###################################"
 echo ""
 
 # Call function of custom-script to export for Global variables with regard to running-program.
-runner_set_env
+runner_set_env ${BUILD_MODE}
 cd ${ROOT_PATH}
 
 # Run launcher for monitoring the program.

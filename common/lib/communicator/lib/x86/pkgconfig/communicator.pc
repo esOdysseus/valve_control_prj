@@ -8,6 +8,6 @@ Name: communicator
 Description: Common-communicator SDK library that support transaction-orient & service-orient.
 Version: 0.3.1
 Libs: -L${libdir} -lcommunicator 
-Libs.private: -ldl -lpthread -L/usr/local/automotive-dlt/lib -ldlt -lrt -lpthread   
+Libs.private: -ldl -lpthread   
 Cflags: -I${includedir}
 

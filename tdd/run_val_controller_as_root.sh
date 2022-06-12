@@ -14,14 +14,12 @@ if [ ! -z ${2} ]; then
 fi
 
 if [ "${RUN_TYPE}" == "real" ]; then
-    cd ${WORKSPACE}/cmd_scheduler
+    cd ${WORKSPACE}/valve_controller
     source ./run_x86.sh
     __run_sample__ ${BUILD_MODE}
 elif [ "${RUN_TYPE}" == "launch" ]; then
-    sudo ${LAUNCHER} -s-path ${WORKSPACE}/cmd_scheduler -s-name run_x86.sh -build ${BUILD_MODE}
+    sudo ${LAUNCHER} -s-path ${WORKSPACE}/valve_controller -s-name run_x86.sh -build ${BUILD_MODE}
 else
     echo -e "\e[1;31m [ERROR] Invalid inpur RUN_TYPE. (${RUN_TYPE}) \e[0m"
 fi
-
-
 

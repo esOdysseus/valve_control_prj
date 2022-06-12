@@ -25,8 +25,12 @@ DEFINES += VER_MAJ=$$VER_MAJ
 DEFINES += VER_MIN=$$VER_MIN
 DEFINES += VER_PAT=$$VER_PAT
 
-# for logger_mode (default logger == DLT logger)
-# DEFINES += LOG_MODE_STDOUT
+equals(CPU_ARCH,"x86") {
+    # for testing at X86
+    DEFINES += TEST_MODE_GPS_ENABLE
+    # for logger_mode (default logger == DLT logger)
+    DEFINES += LOG_MODE_STDOUT
+}
 
 !contains(DEFINES, LOG_MODE_STDOUT) {
     DEFINES += LOG_DLT_APPID=\\\"cont\\\"

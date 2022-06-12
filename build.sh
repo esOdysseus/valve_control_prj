@@ -137,7 +137,9 @@ function run_build_common_lib() {
     case ${BUILD_TARGET} in
         "all") # build all components
             build_common_sqlite  ${BUILD_COMLIB_DIR}   ${DESTDIR}
-            build_common_dlt     ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            if [ "${CPU_ARCH}" != "${DEF_CPU_ARCH}" ]; then
+                build_common_dlt     ${BUILD_COMLIB_DIR}   ${DESTDIR}
+            fi
             build_common_communicator   "${ROOT_PATH}/common/lib"   ${DESTDIR}    ${CPU_ARCH}
             ;;
         "sqlite")    # build sqlite
