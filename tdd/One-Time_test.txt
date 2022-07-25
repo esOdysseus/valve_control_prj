@@ -25,7 +25,7 @@
     "what": {
         "type": "valve.swc",           // valid-values : [ 'valve.swc', 'db' ]
         "contents": {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
-            "seq": "3"
+            "seq": "0"
         }
     },
     "how": {

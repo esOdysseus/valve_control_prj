@@ -187,3 +187,18 @@ echo ""
 echo ""
 echo "===== Reboot target-board. ====="
 exec_command "reboot"
+
+
+##### Tip ##########################
+# >>> How to check service status? Overall.
+#
+#  $ systemctl list-units --all --state=failed,not-found,auto-restart
+#  $ systemctl status dlt.service
+#  $ systemctl status cmd_scheduler
+#
+# >>> How to debug a auto-restart service?
+#
+#  $ journalctl --no-pager -x -e -u cmd_scheduler
+#  <주의사항>
+#    /lib/aarch64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found (required by libsqlite3.so)
+####################################

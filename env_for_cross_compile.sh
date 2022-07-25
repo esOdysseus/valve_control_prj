@@ -47,6 +47,11 @@ case ${CPU_ARCH} in
                 CROSS_COMPILER_PREFIX="aarch64-linux-gnu-"
                 CROSS_CPU_ARCH="aarch64-linux-gnu"
                 ;;
+            "orangepi-zero2" )   # valid tool-chain path !!
+                TOOLCHAIN_PATH="/usr/local/gcc-linaro/aarch64-linux-gnu/8.3.0_x86_64"
+                CROSS_COMPILER_PREFIX="aarch64-linux-gnu-"
+                CROSS_CPU_ARCH="aarch64-linux-gnu"
+                ;;
             * ) 
                 echo -e "\e[1;31m [ERROR] Not Supported BOARD_TARGET.(${BOARD_TARGET}) \e[0m"
                 ;;

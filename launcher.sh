@@ -16,6 +16,59 @@ RUNNING_TIME=0
 PROG_PID=0
 BUILD_MODE=release
 
+function main() {
+    ##############
+    # Main routin
+    ##############
+    # Get & Parse input-parameter.
+    get_input_parameter $*
+
+    ## Include script to run program. #
+    # Assumption : Following is mandatory.
+    #  - Variables : PROG_NAME
+    #  - Method    : runner_set_env , runner_start_program
+    source ${SCRIPT_PATH}/${SCRIPT_NAME}
+
+    # Print Major Variables.
+    echo ""
+    echo "###################################"
+    echo "# Program Name : ${PROG_NAME}"
+    echo "# RESTART_PROG_MINTIME : ${RESTART_PROG_MINTIME}"
+    echo "# RESTART_PROG_MAXTIME : ${RESTART_PROG_MAXTIME}"
+    echo "# LIMIT_RUN_TIME : ${LIMIT_RUN_TIME} seconds"
+    echo "###################################"
+    echo ""
+
+    # Call function of custom-script to export for Global variables with regard to running-program.
+    runner_set_env ${BUILD_MODE}
+    cd ${ROOT_PATH}
+
+    # Run launcher for monitoring the program.
+    while [ true ]; do
+        run_program_if_need
+
+        # Sleep & count of running-time.
+        sleep ${SLEEP_SEC}
+        sync
+        append_running_time ${SLEEP_SEC}
+
+        # Get current time.
+        TIME_NOW=$(get_cur_time)
+        echo "TIME_NOW=${TIME_NOW}, RUNNING_TIME=${RUNNING_TIME}, PROG_PID=${PROG_PID}"
+
+        # Check program stoping.
+        if [ ${RUNNING_TIME} -gt ${LIMIT_RUN_TIME} ]; then
+            if [[ ${RESTART_PROG_MINTIME} < ${TIME_NOW} ]] && [[ ${TIME_NOW} < ${RESTART_PROG_MAXTIME} ]]; then
+                stop_program
+            fi
+        fi
+    done
+
+    # exit program
+    stop_program
+    exit 0
+}
+
 
 ######################################
 # Base Functions
@@ -47,6 +100,38 @@ function append_running_time() {
 ######################################
 # Functions for Life-cycle managing
 ###
+function stop_program() {
+    echo "Stop ${PROG_NAME} program."
+    kill -SIGINT ${PROG_PID}
+    clear_sys_vars
+    sync
+    sleep 1
+}
+
+function run_program() {
+    local TODAY=$(get_today)
+    local LOG_PATH=$(get_log_path ${TODAY} ${BUILD_MODE})
+    ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
+    PROG_PID=$(runner_start_program ${LOG_PATH} ${BUILD_MODE})
+    cd ${ROOT_PATH}
+    echo "LOG_PATH=${LOG_PATH}, PROG_PID=${PROG_PID}"
+}
+
+function run_program_if_need() {
+    if [ ${PROG_NAME} == "none" ]; then
+        echoerr "Need PROG_NAME=${PROG_NAME}"
+    fi
+
+    ps auxw | grep ${PROG_NAME} | grep -v grep > /dev/null
+
+    if [ $? != 0 ]
+    then
+        echo "Running of ${PROG_NAME} is start."
+        clear_sys_vars
+        run_program
+    fi
+}
+
 function get_input_parameter()
 {
     echo "Get input parameters = $*"
@@ -83,84 +168,5 @@ function get_input_parameter()
     fi
 }
 
-function stop_program() {
-    echo "Stop ${PROG_NAME} program."
-    kill -SIGINT ${PROG_PID}
-    clear_sys_vars
-    sync
-    sleep 1
-}
 
-function run_program() {
-    local TODAY=$(get_today)
-    ## PID를 얻기 위해서, runner_start_program내부에서 Program 실행시 후렵부에 "& echo $!" 를 붙혀야 한다.
-    PROG_PID=$(runner_start_program ${TODAY} ${BUILD_MODE})
-    cd ${ROOT_PATH}
-}
-
-function run_program_if_need() {
-    if [ ${PROG_NAME} == "none" ]; then
-        echoerr "Need PROG_NAME=${PROG_NAME}"
-    fi
-
-    ps auxw | grep ${PROG_NAME} | grep -v grep > /dev/null
-
-    if [ $? != 0 ]
-    then
-        echo "Running of ${PROG_NAME} is start."
-        clear_sys_vars
-        run_program
-        echo "PROG_PID=${PROG_PID}"
-    fi
-}
-
-
-##############
-# Main routin
-##############
-# Get & Parse input-parameter.
-get_input_parameter $*
-
-## Include script to run program. #
-# Assumption : Following is mandatory.
-#  - Variables : PROG_NAME
-#  - Method    : runner_set_env , runner_start_program
-source ${SCRIPT_PATH}/${SCRIPT_NAME}
-
-# Print Major Variables.
-echo ""
-echo "###################################"
-echo "# Program Name : ${PROG_NAME}"
-echo "# RESTART_PROG_MINTIME : ${RESTART_PROG_MINTIME}"
-echo "# RESTART_PROG_MAXTIME : ${RESTART_PROG_MAXTIME}"
-echo "# LIMIT_RUN_TIME : ${LIMIT_RUN_TIME} seconds"
-echo "###################################"
-echo ""
-
-# Call function of custom-script to export for Global variables with regard to running-program.
-runner_set_env ${BUILD_MODE}
-cd ${ROOT_PATH}
-
-# Run launcher for monitoring the program.
-while [ true ]; do
-    run_program_if_need
-
-    # Sleep & count of running-time.
-    sleep ${SLEEP_SEC}
-    append_running_time ${SLEEP_SEC}
-
-    # Get current time.
-    TIME_NOW=$(get_cur_time)
-    echo "TIME_NOW=${TIME_NOW}, RUNNING_TIME=${RUNNING_TIME}, PROG_PID=${PROG_PID}"
-
-    # Check program stoping.
-    if [ ${RUNNING_TIME} -gt ${LIMIT_RUN_TIME} ]; then
-        if [[ ${RESTART_PROG_MINTIME} < ${TIME_NOW} ]] && [[ ${TIME_NOW} < ${RESTART_PROG_MAXTIME} ]]; then
-            stop_program
-        fi
-    fi
-done
-
-# exit program
-stop_program
-exit 0
+main $*

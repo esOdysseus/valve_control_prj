@@ -12,6 +12,10 @@ About each of program, Description is following.
  - MACHINE_DEVICE_NAME : It indicate now H/W machine-name that is shared all of processes on the machine.
 
 
+## Prerequisites
+ - libc.so.6: version `GLIBC_2.28' (required by libsqlite3.so)
+
+
 ## Test Driven Development
  > With CMD-Scheduler
  - **echo -e "Principle6_json" | nc -u 192.168.1.2 20000**

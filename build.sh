@@ -7,7 +7,7 @@ DEF_CPU_ARCH="x86"
 BUILD_MODE=release
 BUILD_TARGET="valve"
 CPU_ARCH=${DEF_CPU_ARCH}    # Available Values : x86 , armv7 , aarch64
-BOARD_TARGET="none"         # Available Values : none , orangepi-i96 , orangepi-pc+ , orangepi-zero+2H5
+BOARD_TARGET="none"         # Available Values : none , orangepi-i96 , orangepi-pc+ , orangepi-zero+2H5 , orangepi-zero2
 
 
 #######################################

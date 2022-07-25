@@ -46,7 +46,7 @@
         }
     },
     'what': {
-        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db', 'req.cmd', 'resp.cmd' ]
         'contents': {               // valve.swc : 일때, 어떤 switch를 선택할지를 나타낸다.
             'seq': 'uint32_t'
         }
@@ -60,9 +60,32 @@
                 }
             }
         }
+        'contents': {               // req.cmd : REQ를 보내는 입장에서, method 수행자가 일관되게 수행할수 있도록 고민한다.
+                                    //           명료성과, 일관된 format을 기반으로 제한적 Description이 중요해 보인다.
+            'type': 'future',       // valid-values : [ 'future', 'now', 'past' ] DataBase의 type을 나타낸다.
+            'table': 'event',       // valid-values : [ 'event', 'period' ]  DB의 Table-name을 넣는다.
+            'cmds': {
+                'needs': [ 'key01', 'key02' ]
+            }
+        }
+        'contents': {               // resp.cmd : REQ에 대한 응답으로 어떤 내용을 요청자에게 제공할지에 초점을 맞춘다.
+            'type': 'future',       // valid-values : [ 'future', 'now', 'past' ] DataBase의 type을 나타낸다.
+            'table': 'event',       // valid-values : [ 'event', 'period' ]  DB의 Table-name을 넣는다.
+            'cmds': {
+                '${uuid}': {        // 기본적으로 모든 CMD는 uuid를 가지며, indexing이 가능하므로 기본 제공된다.
+                    'key01': 'value01',
+                    'key02': 'value02',
+                    'error': 'no error' // It describe error-state with error message as text.
+                }
+            },
+            'result': {
+                'method': 'get',    // valid-values : [ 'get', 'put', 'delete', 'disable', 'enable' ]
+                'state': 'OK'       // valid-values : [ 'OK', 'FAIL' ]  cmd들 모두가 성공하면, 최종 OK로 설정한다.
+            }
+        }
     },
     'how': {
-        'type': 'string',           // valid-values : [ 'valve.swc', 'db' ]
+        'type': 'string',           // valid-values : [ 'valve.swc', 'db', 'req.cmd' ]
         'contents': {               // valve.swc : 일때, Action의 Start~Stop까지 묶어준다.
             'method-pre': 'open',   // valid-values : [ open , close, none ]
             'costtime': 'double',   // valid-values : seconds + point value
@@ -73,6 +96,15 @@
             'method': 'update',     // valid-values : [ 'select', 'delete', 'insert', 'update' ]
             'condition': {
                 '1': 'string'       // 'string' 한개는 What의 'contents.target' 1개와 동일한 key 위치에서 pair가 된다.
+            }
+        }
+        'contents': {               // req.cmd : DataBase에 what을 어떻게 적용할지를 명시한다.
+            'method': 'get',        // valid-values : [ 'get', 'put', 'delete', 'disable', 'enable' ]
+            'condition': {          // valid-keys : [ 'uuid', 'from-date', 'to-date' ]
+                                    //              uuid와 (from-date, to-date)는 XOR 관계이다.
+                'uuid' : [ 'xxxxx' ],
+                'from-date' : '2022-05-13 13:00:00',
+                'to-date' : '2022-05-13 13:30:00'
             }
         }
     },
